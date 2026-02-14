@@ -150,17 +150,20 @@ fi
 
 # ─── Step 6: Zsh plugins ────────────────────────────────────────────────────
 info "Checking Zsh plugins..."
-declare -A ZSH_PLUGINS=(
-  [zsh-autosuggestions]="https://github.com/zsh-users/zsh-autosuggestions"
-  [zsh-syntax-highlighting]="https://github.com/zsh-users/zsh-syntax-highlighting.git"
-  [zsh-completions]="https://github.com/zsh-users/zsh-completions"
+ZSH_PLUGIN_NAMES=(zsh-autosuggestions zsh-syntax-highlighting zsh-completions)
+ZSH_PLUGIN_URLS=(
+  "https://github.com/zsh-users/zsh-autosuggestions"
+  "https://github.com/zsh-users/zsh-syntax-highlighting.git"
+  "https://github.com/zsh-users/zsh-completions"
 )
-for plugin in "${!ZSH_PLUGINS[@]}"; do
+for i in "${!ZSH_PLUGIN_NAMES[@]}"; do
+  plugin="${ZSH_PLUGIN_NAMES[$i]}"
+  url="${ZSH_PLUGIN_URLS[$i]}"
   if [[ -d "$ZSH_CUSTOM/plugins/$plugin" ]]; then
     ok "$plugin already installed"
   else
     info "Installing $plugin..."
-    git clone "${ZSH_PLUGINS[$plugin]}" "$ZSH_CUSTOM/plugins/$plugin"
+    git clone "$url" "$ZSH_CUSTOM/plugins/$plugin"
     ok "$plugin installed"
   fi
 done
@@ -168,27 +171,30 @@ done
 # ─── Step 7: Symlink dotfiles ───────────────────────────────────────────────
 info "Linking dotfiles..."
 
-# Files to link: source → target
-declare -A LINKS=(
-  ["$DOTFILES_DIR/config/zshrc"]="$HOME/.zshrc"
-  ["$DOTFILES_DIR/config/tmux.conf"]="$HOME/.tmux.conf"
-  ["$DOTFILES_DIR/config/p10k.zsh"]="$HOME/.p10k.zsh"
+LINK_SRCS=(
+  "$DOTFILES_DIR/config/zshrc"
+  "$DOTFILES_DIR/config/tmux.conf"
+  "$DOTFILES_DIR/config/p10k.zsh"
+)
+LINK_DSTS=(
+  "$HOME/.zshrc"
+  "$HOME/.tmux.conf"
+  "$HOME/.p10k.zsh"
 )
 
 mkdir -p "$BACKUP_DIR"
 
-for src in "${!LINKS[@]}"; do
-  target="${LINKS[$src]}"
+for i in "${!LINK_SRCS[@]}"; do
+  src="${LINK_SRCS[$i]}"
+  target="${LINK_DSTS[$i]}"
   if [[ ! -f "$src" ]]; then
     warn "Source $src not found, skipping"
     continue
   fi
-  # Backup existing file (if it's a real file, not already our symlink)
   if [[ -f "$target" && ! -L "$target" ]]; then
     cp "$target" "$BACKUP_DIR/$(basename "$target")"
     warn "Backed up $(basename "$target") → $BACKUP_DIR/"
   fi
-  # Remove existing and create symlink
   rm -f "$target"
   ln -sf "$src" "$target"
   ok "Linked $(basename "$target")"
