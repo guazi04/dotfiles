@@ -25,28 +25,69 @@ echo "  dotfiles installer for macOS"
 echo "============================================"
 echo ""
 
-# ─── Step 0: ClashX proxy config (FIRST — everything else downloads faster) ─
-info "Restoring ClashX config..."
+# ─── Step 0: Proxy (FIRST — everything else downloads faster) ────────────────
 CLASH_SRC="$DOTFILES_DIR/config/clash/config.yaml"
 CLASH_DIR="$HOME/.config/clash"
-if [[ -f "$CLASH_SRC" ]]; then
-  mkdir -p "$CLASH_DIR"
-  if [[ -f "$CLASH_DIR/config.yaml" && ! -L "$CLASH_DIR/config.yaml" ]]; then
-    mkdir -p "$BACKUP_DIR"
-    cp "$CLASH_DIR/config.yaml" "$BACKUP_DIR/clash-config.yaml"
-    warn "Backed up existing clash config"
+CLASH_DEST="$CLASH_DIR/config.yaml"
+
+setup_proxy() {
+  if curl -sS --connect-timeout 3 --proxy http://127.0.0.1:7890 https://www.google.com >/dev/null 2>&1; then
+    export http_proxy=http://127.0.0.1:7890
+    export https_proxy=http://127.0.0.1:7890
+    export all_proxy=socks5://127.0.0.1:7891
+    ok "Proxy is working (http://127.0.0.1:7890)"
+    return 0
   fi
-  cp "$CLASH_SRC" "$CLASH_DIR/config.yaml"
-  ok "ClashX config restored → ~/.config/clash/config.yaml"
+  return 1
+}
+
+if setup_proxy; then
+  ok "Proxy already active, skipping ClashX setup"
+elif [[ -f "$CLASH_DEST" ]]; then
+  ok "ClashX config already exists at $CLASH_DEST"
   echo ""
-  echo -e "  ${YELLOW}>>> Open ClashX now and enable System Proxy <<<${NC}"
-  echo -e "  ${YELLOW}>>> Then press Enter to continue (proxy speeds up all downloads) <<<${NC}"
-  echo ""
-  read -rp "  Press Enter when proxy is ready (or Enter to skip)..."
-  echo ""
+  echo -e "  ${YELLOW}Open ClashX and enable System Proxy, then press Enter${NC}"
+  read -rp "  Press Enter when ready..."
+  setup_proxy || warn "Proxy not reachable, continuing without proxy (downloads may be slow)"
 else
-  warn "ClashX config not found in dotfiles, skipping"
+  if [[ ! -d "/Applications/ClashX.app" ]]; then
+    echo ""
+    echo -e "  ${RED}ClashX is NOT installed.${NC}"
+    echo ""
+    echo "  Download from: https://en.clashx.org/download/"
+    echo "  Or search:     ClashX 1.118.0 dmg"
+    echo ""
+    read -rp "  Press Enter after installing ClashX (or Enter to skip)..."
+  fi
+
+  if [[ -f "$CLASH_SRC" ]]; then
+    info "Restoring ClashX config from dotfiles..."
+    mkdir -p "$CLASH_DIR"
+    cp "$CLASH_SRC" "$CLASH_DEST"
+    ok "Config restored → $CLASH_DEST"
+  else
+    warn "No ClashX config found (not in dotfiles, not on system)"
+    echo ""
+    echo "  To configure now, paste your config below (Ctrl+D when done),"
+    echo "  or just press Ctrl+D to skip:"
+    echo ""
+    mkdir -p "$CLASH_DIR"
+    if content=$(cat 2>/dev/null) && [[ -n "$content" ]]; then
+      echo "$content" > "$CLASH_DEST"
+      ok "Config written → $CLASH_DEST"
+    else
+      warn "Skipped — no config provided"
+    fi
+  fi
+
+  if [[ -f "$CLASH_DEST" ]]; then
+    echo ""
+    echo -e "  ${YELLOW}Now open ClashX and enable System Proxy, then press Enter${NC}"
+    read -rp "  Press Enter when ready (or Enter to skip)..."
+    setup_proxy || warn "Proxy not reachable, continuing without proxy (downloads may be slow)"
+  fi
 fi
+echo ""
 
 # ─── Step 1: Homebrew ────────────────────────────────────────────────────────
 info "Checking Homebrew..."
