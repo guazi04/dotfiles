@@ -24,6 +24,7 @@ echo "============================================"
 echo "  dotfiles installer for macOS"
 echo "============================================"
 echo ""
+info "Starting installation..."
 
 # ─── Step 0: Proxy (FIRST — everything else downloads faster) ────────────────
 CLASH_SRC="$DOTFILES_DIR/config/clash/config.yaml"
@@ -31,7 +32,7 @@ CLASH_DIR="$HOME/.config/clash"
 CLASH_DEST="$CLASH_DIR/config.yaml"
 
 setup_proxy() {
-  if curl -sS --connect-timeout 3 --proxy http://127.0.0.1:7890 https://www.google.com >/dev/null 2>&1; then
+  if curl -sS --max-time 5 --proxy http://127.0.0.1:7890 http://www.gstatic.com/generate_204 >/dev/null 2>&1; then
     export http_proxy=http://127.0.0.1:7890
     export https_proxy=http://127.0.0.1:7890
     export all_proxy=socks5://127.0.0.1:7891
@@ -140,7 +141,11 @@ fi
 source "$HOME/.nvm/nvm.sh"
 if ! command -v node &>/dev/null; then
   info "Installing Node.js (LTS)..."
+  set +e
   nvm install --lts
+  set -e
+  source "$HOME/.nvm/nvm.sh"
+  command -v node &>/dev/null || fail "Node.js installation failed. Try manually: nvm install --lts"
   ok "Node.js $(node --version) installed"
 else
   ok "Node.js $(node --version) already installed"
