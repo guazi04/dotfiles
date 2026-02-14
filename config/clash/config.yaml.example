@@ -1,0 +1,27 @@
+mode: rule
+log-level: info
+
+proxies:
+  - name: "your-proxy-name"
+    type: ss
+    server: your.server.address
+    port: 38883
+    cipher: chacha20-ietf-poly1305
+    password: "your-password"
+    udp: true
+
+proxy-groups:
+  - name: Proxy
+    type: select
+    proxies:
+      - your-proxy-name
+      - DIRECT
+
+rules:
+  - DOMAIN-SUFFIX,google.com,Proxy
+  - DOMAIN-SUFFIX,googleapis.com,Proxy
+  - DOMAIN-SUFFIX,gstatic.com,Proxy
+  - DOMAIN-SUFFIX,github.com,Proxy
+  - DOMAIN-SUFFIX,githubusercontent.com,Proxy
+  - GEOIP,CN,DIRECT
+  - MATCH,Proxy
