@@ -128,12 +128,13 @@ fi
 
 # ─── Step 4: Oh My Zsh ──────────────────────────────────────────────────────
 info "Checking Oh My Zsh..."
-if [[ -d "$HOME/.oh-my-zsh" ]]; then
+if [[ -f "$HOME/.oh-my-zsh/oh-my-zsh.sh" ]]; then
   ok "Oh My Zsh already installed"
 else
+  rm -rf "$HOME/.oh-my-zsh"
   info "Installing Oh My Zsh..."
-  sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended || true
-  [[ -d "$HOME/.oh-my-zsh" ]] || fail "Oh My Zsh installation failed. Check network/proxy and re-run."
+  KEEP_ZSHRC=yes sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended || true
+  [[ -f "$HOME/.oh-my-zsh/oh-my-zsh.sh" ]] || fail "Oh My Zsh installation failed. Check network/proxy and re-run."
   ok "Oh My Zsh installed"
 fi
 
