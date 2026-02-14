@@ -105,7 +105,7 @@ fi
 
 # ─── Step 2: CLI tools via Homebrew ──────────────────────────────────────────
 info "Installing CLI tools..."
-BREW_PACKAGES=(eza bat fd ripgrep fzf zoxide tmux)
+BREW_PACKAGES=(eza bat fd ripgrep fzf zoxide tmux gh)
 for pkg in "${BREW_PACKAGES[@]}"; do
   if brew list "$pkg" &>/dev/null; then
     ok "$pkg already installed"
@@ -124,6 +124,27 @@ else
   info "Installing MesloLGS Nerd Font..."
   brew install --cask font-meslo-lg-nerd-font
   ok "MesloLGS Nerd Font installed"
+fi
+
+# ─── Step 3.5: NVM + Bun ────────────────────────────────────────────────────
+info "Checking NVM..."
+if [[ -s "$HOME/.nvm/nvm.sh" ]]; then
+  ok "NVM already installed"
+else
+  info "Installing NVM..."
+  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash || true
+  [[ -s "$HOME/.nvm/nvm.sh" ]] || fail "NVM installation failed. Check network/proxy and re-run."
+  ok "NVM installed"
+fi
+
+info "Checking Bun..."
+if command -v bun &>/dev/null || [[ -x "$HOME/.bun/bin/bun" ]]; then
+  ok "Bun already installed"
+else
+  info "Installing Bun..."
+  curl -fsSL https://bun.sh/install | bash || true
+  [[ -x "$HOME/.bun/bin/bun" ]] || fail "Bun installation failed. Check network/proxy and re-run."
+  ok "Bun installed"
 fi
 
 # ─── Step 4: Oh My Zsh ──────────────────────────────────────────────────────
