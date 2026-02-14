@@ -132,7 +132,8 @@ if [[ -d "$HOME/.oh-my-zsh" ]]; then
   ok "Oh My Zsh already installed"
 else
   info "Installing Oh My Zsh..."
-  sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+  sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended || true
+  [[ -d "$HOME/.oh-my-zsh" ]] || fail "Oh My Zsh installation failed. Check network/proxy and re-run."
   ok "Oh My Zsh installed"
 fi
 
@@ -144,7 +145,8 @@ if [[ -d "$ZSH_CUSTOM/themes/powerlevel10k" ]]; then
   ok "Powerlevel10k already installed"
 else
   info "Installing Powerlevel10k..."
-  git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$ZSH_CUSTOM/themes/powerlevel10k"
+  git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$ZSH_CUSTOM/themes/powerlevel10k" || true
+  [[ -d "$ZSH_CUSTOM/themes/powerlevel10k" ]] || fail "Powerlevel10k installation failed. Check network/proxy and re-run."
   ok "Powerlevel10k installed"
 fi
 
@@ -163,7 +165,8 @@ for i in "${!ZSH_PLUGIN_NAMES[@]}"; do
     ok "$plugin already installed"
   else
     info "Installing $plugin..."
-    git clone "$url" "$ZSH_CUSTOM/plugins/$plugin"
+    git clone "$url" "$ZSH_CUSTOM/plugins/$plugin" || true
+    [[ -d "$ZSH_CUSTOM/plugins/$plugin" ]] || { warn "$plugin installation failed, skipping"; continue; }
     ok "$plugin installed"
   fi
 done
