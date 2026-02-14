@@ -137,6 +137,15 @@ else
   ok "NVM installed"
 fi
 
+source "$HOME/.nvm/nvm.sh"
+if ! command -v node &>/dev/null; then
+  info "Installing Node.js (LTS)..."
+  nvm install --lts
+  ok "Node.js $(node --version) installed"
+else
+  ok "Node.js $(node --version) already installed"
+fi
+
 info "Checking Bun..."
 if command -v bun &>/dev/null || [[ -x "$HOME/.bun/bin/bun" ]]; then
   ok "Bun already installed"
