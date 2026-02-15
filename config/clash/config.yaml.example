@@ -1,27 +1,39 @@
+#---------------------------------------------------#
+## 配置文件需要放置在 $HOME/.config/clash/*.yaml
+
+## 这份文件是clashX的基础配置文件，请尽量新建配置文件进行修改。
+## 端口设置请在 菜单条图标->配置->更多配置 中进行修改
+
+## 如果您不知道如何操作，请参阅 官方Github文档 https://dreamacro.github.io/clash/
+#---------------------------------------------------#
+
 mode: rule
 log-level: info
 
 proxies:
-  - name: "your-proxy-name"
+  - name: "SS-hb-aliyun"
     type: ss
-    server: your.server.address
+    server: YOUR_SERVER_ADDRESS
     port: 38883
     cipher: chacha20-ietf-poly1305
-    password: "your-password"
+    password: "YOUR_PASSWORD"
     udp: true
 
 proxy-groups:
   - name: Proxy
     type: select
     proxies:
-      - your-proxy-name
+      - SS-hb-aliyun
       - DIRECT
 
 rules:
+  # Google 走代理
   - DOMAIN-SUFFIX,google.com,Proxy
   - DOMAIN-SUFFIX,googleapis.com,Proxy
   - DOMAIN-SUFFIX,gstatic.com,Proxy
-  - DOMAIN-SUFFIX,github.com,Proxy
-  - DOMAIN-SUFFIX,githubusercontent.com,Proxy
+
+  # 其他
+  - DOMAIN-SUFFIX,ad.com,REJECT
   - GEOIP,CN,DIRECT
+  - DOMAIN-SUFFIX,intsig.net,DIRECT
   - MATCH,Proxy

@@ -47,13 +47,6 @@ all_proxy=socks5://127.0.0.1:7891'
 alias poff='unset http_proxy https_proxy all_proxy'
 
 # ============================================================
-# NVM (Node Version Manager)
-# ============================================================
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
-
-# ============================================================
 # Bun
 # ============================================================
 [ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"

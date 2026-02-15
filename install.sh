@@ -106,7 +106,7 @@ fi
 
 # ─── Step 2: CLI tools via Homebrew ──────────────────────────────────────────
 info "Installing CLI tools..."
-BREW_PACKAGES=(eza bat fd ripgrep fzf zoxide tmux gh)
+BREW_PACKAGES=(eza bat fd ripgrep fzf zoxide tmux gh node)
 for pkg in "${BREW_PACKAGES[@]}"; do
   if brew list "$pkg" &>/dev/null; then
     ok "$pkg already installed"
@@ -127,30 +127,21 @@ else
   ok "MesloLGS Nerd Font installed"
 fi
 
-# ─── Step 3.5: NVM + Bun ────────────────────────────────────────────────────
-info "Checking NVM..."
-if [[ -s "$HOME/.nvm/nvm.sh" ]]; then
-  ok "NVM already installed"
-else
-  info "Installing NVM..."
-  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash || true
-  [[ -s "$HOME/.nvm/nvm.sh" ]] || fail "NVM installation failed. Check network/proxy and re-run."
-  ok "NVM installed"
+# ─── Step 3.5: Clean up NVM (if present) ────────────────────────────────────
+if [[ -d "$HOME/.nvm" ]]; then
+  warn "Found legacy NVM installation at ~/.nvm"
+  echo -e "  Node.js is now managed by Homebrew. NVM is no longer needed."
+  echo ""
+  read -rp "  Remove ~/.nvm? [y/N] " remove_nvm
+  if [[ "$remove_nvm" =~ ^[Yy]$ ]]; then
+    rm -rf "$HOME/.nvm"
+    ok "Removed ~/.nvm"
+  else
+    warn "Kept ~/.nvm — you can remove it later with: rm -rf ~/.nvm"
+  fi
 fi
 
-source "$HOME/.nvm/nvm.sh"
-if ! command -v node &>/dev/null; then
-  info "Installing Node.js (LTS)..."
-  set +e
-  nvm install --lts
-  set -e
-  source "$HOME/.nvm/nvm.sh"
-  command -v node &>/dev/null || fail "Node.js installation failed. Try manually: nvm install --lts"
-  ok "Node.js $(node --version) installed"
-else
-  ok "Node.js $(node --version) already installed"
-fi
-
+# ─── Step 3.5b: Bun ─────────────────────────────────────────────────────────
 info "Checking Bun..."
 if command -v bun &>/dev/null || [[ -x "$HOME/.bun/bin/bun" ]]; then
   ok "Bun already installed"
