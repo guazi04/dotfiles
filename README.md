@@ -6,7 +6,7 @@ macOS terminal configuration — one command to restore on any new Mac.
 
 ```bash
 # 1. Clone this repo
-git clone https://github.com/<your-username>/dotfiles.git ~/dotfiles
+git clone https://github.com/guazi04/dotfiles.git ~/dotfiles
 
 # 2. Copy your ClashX config (not in repo — has credentials)
 cp /path/to/your/clash/config.yaml ~/dotfiles/config/clash/config.yaml
@@ -28,7 +28,7 @@ cd ~/dotfiles && ./install.sh
 
 ## Installed by `install.sh`
 
-**Tools** (via Homebrew): `eza` `bat` `fd` `ripgrep` `fzf` `zoxide` `tmux`
+**Tools** (via Homebrew): `eza` `bat` `fd` `ripgrep` `fzf` `zoxide` `tmux` `gh` `node` `uv`
 
 **Zsh**: oh-my-zsh + Powerlevel10k + zsh-autosuggestions + zsh-syntax-highlighting + zsh-completions
 
@@ -38,7 +38,6 @@ cd ~/dotfiles && ./install.sh
 
 1. Set terminal font to **MesloLGS Nerd Font Mono** (14pt)
 2. Open a new terminal — Powerlevel10k wizard will auto-start
-3. Add secrets to `~/.secrets` (not tracked by git)
 
 ## ClashX
 
@@ -48,13 +47,40 @@ Clash config contains proxy credentials and is **git-ignored**. On a new Mac:
 2. Fill in your actual server/password
 3. Run `./install.sh` — it restores ClashX config first and waits for you to enable proxy before downloading everything else
 
-## Secrets
+## Proxy
 
-Machine-specific keys go in `~/.secrets` (git-ignored):
+Proxy is auto-detected at shell startup. If ClashX is running, it's enabled automatically; if not, nothing is set.
+
+Manual control:
 
 ```bash
-export INTSIG_API_KEY=your_key_here
+pon   # enable proxy
+poff  # disable proxy
 ```
+
+## Python (uv)
+
+`uv` is the default Python package manager (`UV_PYTHON_PREFERENCE=managed`).
+
+| Alias | Command |
+|-------|---------|
+| `pip` | `uv pip` |
+| `venv` | `uv venv` |
+| `pyi` | `uv pip install` |
+| `pyu` | `uv pip install --upgrade` |
+
+## GitHub CLI
+
+The installer runs `gh auth login` interactively. After that, `GITHUB_TOKEN` is exported automatically from `gh auth token` at shell startup — no manual config needed.
+
+## Secrets
+
+`~/.secrets` holds machine-specific keys (git-ignored). The installer creates it interactively if it doesn't exist; an existing file is never overwritten.
+
+Currently managed:
+
+- `INTSIG_API_KEY` — prompted during install
+- `GITHUB_TOKEN` — managed by `gh auth login`, not stored in `~/.secrets`
 
 ## Uninstall
 
