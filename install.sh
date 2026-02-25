@@ -106,7 +106,7 @@ fi
 
 # ─── Step 2: CLI tools via Homebrew ──────────────────────────────────────────
 info "Installing CLI tools..."
-BREW_PACKAGES=(eza bat fd ripgrep fzf zoxide tmux gh node)
+BREW_PACKAGES=(eza bat fd ripgrep fzf zoxide tmux gh node uv)
 for pkg in "${BREW_PACKAGES[@]}"; do
   if brew list "$pkg" &>/dev/null; then
     ok "$pkg already installed"
@@ -230,17 +230,64 @@ for i in "${!LINK_SRCS[@]}"; do
   ok "Linked $(basename "$target")"
 done
 
-# ─── Step 8: Create secrets template ────────────────────────────────────────
+# ─── Step 8: Configure secrets ────────────────────────────────────────────
 if [[ ! -f "$HOME/.secrets" ]]; then
-  info "Creating ~/.secrets template..."
-  cat > "$HOME/.secrets" << 'SECRETS_EOF'
-# Machine-specific secrets — NOT tracked by git
-# export INTSIG_API_KEY=your_key_here
-# export GITHUB_TOKEN=your_token_here
-SECRETS_EOF
-  ok "~/.secrets template created (edit with your actual keys)"
+  info "Setting up ~/.secrets..."
+  echo ""
+
+  # Define secrets: "VAR_NAME:Description"
+  secrets_to_configure=(
+    "INTSIG_API_KEY:Intsig API Key"
+  )
+
+  # Write file header
+  echo "# Machine-specific secrets — NOT tracked by git" > "$HOME/.secrets"
+  echo "" >> "$HOME/.secrets"
+
+  for secret_pair in "${secrets_to_configure[@]}"; do
+    var_name="${secret_pair%%:*}"
+    var_desc="${secret_pair##*:}"
+
+    echo -ne "  ${BLUE}${var_desc}${NC}: "
+    read -rs secret_value
+    echo ""
+
+    if [[ -n "$secret_value" ]]; then
+      echo "export ${var_name}=${secret_value}" >> "$HOME/.secrets"
+    else
+      echo "# export ${var_name}=your_key_here" >> "$HOME/.secrets"
+      warn "Skipped $var_desc (edit ~/.secrets later)"
+    fi
+  done
+
+  echo ""
+  ok "~/.secrets created"
 else
   ok "~/.secrets already exists, not overwriting"
+fi
+
+# ─── Step 8.5: GitHub CLI authentication ────────────────────────────────
+info "Checking GitHub CLI authentication..."
+if gh auth status &>/dev/null 2>&1; then
+  ok "GitHub CLI already authenticated"
+else
+  warn "GitHub CLI is not authenticated"
+  echo ""
+  echo -e "  ${BLUE}Interactive login will help you authenticate with GitHub.${NC}"
+  echo "  This is optional — you can configure it manually later."
+  echo ""
+  read -rp "  Run 'gh auth login' now? [y/N] " gh_login
+  if [[ "$gh_login" =~ ^[Yy]$ ]]; then
+    info "Starting GitHub CLI authentication..."
+    if gh auth login; then
+      ok "GitHub CLI authentication completed"
+    else
+      warn "GitHub CLI authentication failed (network or proxy issue?)"
+      echo "  You can authenticate manually later with: gh auth login"
+    fi
+  else
+    info "Skipping GitHub CLI authentication — configure manually with: gh auth login"
+  fi
 fi
 
 # ─── Step 9: Reload tmux if running ─────────────────────────────────────────
@@ -261,9 +308,5 @@ echo "     iTerm2:       Preferences → Profiles → Text → Font"
 echo ""
 echo "  2. Open a NEW terminal window"
 echo "     Powerlevel10k wizard will auto-start (or run: p10k configure)"
-echo ""
-echo "  3. Add your secrets to ~/.secrets"
-echo "     e.g.: export INTSIG_API_KEY=your_key_here"
-echo ""
 echo "  Backups saved to: $BACKUP_DIR"
 echo ""

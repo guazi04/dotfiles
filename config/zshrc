@@ -37,14 +37,25 @@ source $ZSH/oh-my-zsh.sh
 export LANG=en_US.UTF-8
 export EDITOR='vim'
 
+export OPENCODE_PORT=4097
 # ============================================================
-# Proxy switch
+# Proxy (auto-detect on shell startup, manual toggle: pon / poff)
 # ============================================================
-alias pon='export http_proxy=http://127.0.0.1:7890 \
-https_proxy=http://127.0.0.1:7890 \
-all_proxy=socks5://127.0.0.1:7891'
+pon() {
+  export http_proxy=http://127.0.0.1:7890
+  export https_proxy=http://127.0.0.1:7890
+  export all_proxy=socks5://127.0.0.1:7891
+  export no_proxy=localhost,127.0.0.1,::1
+}
 
-alias poff='unset http_proxy https_proxy all_proxy'
+poff() {
+  unset http_proxy https_proxy all_proxy no_proxy
+}
+
+# Auto-enable proxy if ClashX is running
+if nc -z 127.0.0.1 7890 2>/dev/null; then
+  pon
+fi
 
 # ============================================================
 # Bun
@@ -54,9 +65,22 @@ export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 
 # ============================================================
+# UV Python Manager
+# ============================================================
+if command -v uv &>/dev/null; then
+  export UV_PYTHON_PREFERENCE=managed
+  alias pip='uv pip'
+  alias venv='uv venv'
+  alias pyi='uv pip install'
+  alias pyu='uv pip install --upgrade'
+fi
+
+# ============================================================
 # API Keys (loaded from ~/.secrets if exists)
 # ============================================================
 [ -f ~/.secrets ] && source ~/.secrets
+# GitHub token from gh CLI (auto-managed by gh auth login)
+command -v gh &>/dev/null && export GITHUB_TOKEN=$(gh auth token 2>/dev/null)
 
 # ============================================================
 # Modern CLI Tool Aliases
@@ -149,3 +173,5 @@ topcmd() { history | awk '{print $2}' | sort | uniq -c | sort -rn | head -10; }
 # ============================================================
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+
+. "$HOME/.local/bin/env"
