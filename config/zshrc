@@ -79,8 +79,6 @@ fi
 # API Keys (loaded from ~/.secrets if exists)
 # ============================================================
 [ -f ~/.secrets ] && source ~/.secrets
-# GitHub token from gh CLI (auto-managed by gh auth login)
-command -v gh &>/dev/null && export GITHUB_TOKEN=$(gh auth token 2>/dev/null)
 
 # ============================================================
 # Modern CLI Tool Aliases

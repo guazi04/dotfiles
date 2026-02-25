@@ -71,7 +71,7 @@ poff  # disable proxy
 
 ## GitHub CLI
 
-The installer runs `gh auth login` interactively. After that, `GITHUB_TOKEN` is exported automatically from `gh auth token` at shell startup — no manual config needed.
+The installer runs `gh auth login` interactively. Token is managed by gh's keyring — no environment variable needed.
 
 ## Secrets
 
@@ -80,7 +80,7 @@ The installer runs `gh auth login` interactively. After that, `GITHUB_TOKEN` is 
 Currently managed:
 
 - `INTSIG_API_KEY` — prompted during install
-- `GITHUB_TOKEN` — managed by `gh auth login`, not stored in `~/.secrets`
+- `GITHUB_TOKEN` — managed by `gh` keyring (do not set as env var)
 
 ## Uninstall
 
