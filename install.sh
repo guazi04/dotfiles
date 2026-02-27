@@ -205,11 +205,13 @@ LINK_SRCS=(
   "$DOTFILES_DIR/config/zshrc"
   "$DOTFILES_DIR/config/tmux.conf"
   "$DOTFILES_DIR/config/p10k.zsh"
+  "$DOTFILES_DIR/config/bunfig.toml"
 )
 LINK_DSTS=(
   "$HOME/.zshrc"
   "$HOME/.tmux.conf"
   "$HOME/.p10k.zsh"
+  "$HOME/.bunfig.toml"
 )
 
 mkdir -p "$BACKUP_DIR"
