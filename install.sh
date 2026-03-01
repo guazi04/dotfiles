@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
-# dotfiles installer — one command to restore full macOS terminal setup
-# Usage: curl -fsSL <raw-url>/install.sh | bash
-#    or: cd ~/dotfiles && ./install.sh
+# dotfiles installer — restore full macOS terminal setup
+# Usage: cd ~/dotfiles && ./install.sh
 # =============================================================================
 set -euo pipefail
 
@@ -27,30 +26,111 @@ echo ""
 info "Starting installation..."
 
 # ─── Step 0: Proxy (FIRST — everything else downloads faster) ────────────────
-CLASH_SRC="$DOTFILES_DIR/config/clash/config.yaml"
 CLASH_DIR="$HOME/.config/clash"
 CLASH_DEST="$CLASH_DIR/config.yaml"
+CLASH_EXAMPLE="$DOTFILES_DIR/config/clash/config.yaml.example"
 
-setup_proxy() {
+# Step 0a: Test if proxy is already working
+test_proxy() {
   if curl -sS --max-time 5 --proxy http://127.0.0.1:7890 http://www.gstatic.com/generate_204 >/dev/null 2>&1; then
     export http_proxy=http://127.0.0.1:7890
     export https_proxy=http://127.0.0.1:7890
     export all_proxy=socks5://127.0.0.1:7891
-    ok "Proxy is working (http://127.0.0.1:7890)"
     return 0
   fi
   return 1
 }
 
-if setup_proxy; then
-  ok "Proxy already active, skipping ClashX setup"
-elif [[ -f "$CLASH_DEST" ]]; then
-  ok "ClashX config already exists at $CLASH_DEST"
+# Step 0d: Interactive config creation from SS server details
+create_clash_config() {
   echo ""
-  echo -e "  ${YELLOW}Open ClashX and enable System Proxy, then press Enter${NC}"
-  read -rp "  Press Enter when ready..."
-  setup_proxy || warn "Proxy not reachable, continuing without proxy (downloads may be slow)"
+  info "Interactive Shadowsocks config setup"
+  echo -e "  ${BLUE}Enter your Shadowsocks server details:${NC}"
+  echo ""
+
+  # Server address (required)
+  local ss_server=""
+  while [[ -z "$ss_server" ]]; do
+    read -rp "  Server address (required): " ss_server < /dev/tty
+    [[ -z "$ss_server" ]] && echo -e "  ${RED}Server address is required.${NC}"
+  done
+
+  # Port (default: 38883)
+  read -rp "  Port [38883]: " ss_port < /dev/tty
+  ss_port="${ss_port:-38883}"
+
+  # Password (required, hidden)
+  local ss_password=""
+  while [[ -z "$ss_password" ]]; do
+    echo -ne "  Password (required, hidden): "
+    read -rs ss_password < /dev/tty
+    echo ""
+    [[ -z "$ss_password" ]] && echo -e "  ${RED}Password is required.${NC}"
+  done
+
+  # Cipher (default: chacha20-ietf-poly1305)
+  read -rp "  Cipher [chacha20-ietf-poly1305]: " ss_cipher < /dev/tty
+  ss_cipher="${ss_cipher:-chacha20-ietf-poly1305}"
+
+  # Proxy name (default: SS-proxy)
+  read -rp "  Proxy name [SS-proxy]: " ss_name < /dev/tty
+  ss_name="${ss_name:-SS-proxy}"
+
+  # Generate config from template structure
+  mkdir -p "$CLASH_DIR"
+  cat > "$CLASH_DEST" <<CLASH_EOF
+#---------------------------------------------------#
+## 配置文件需要放置在 \$HOME/.config/clash/*.yaml
+
+## 这份文件是clashX的基础配置文件，请尽量新建配置文件进行修改。
+## 端口设置请在 菜单条图标->配置->更多配置 中进行修改
+
+## 如果您不知道如何操作，请参阅 官方Github文档 https://dreamacro.github.io/clash/
+#---------------------------------------------------#
+
+mode: rule
+log-level: info
+
+proxies:
+  - name: "${ss_name}"
+    type: ss
+    server: '${ss_server}'
+    port: ${ss_port}
+    cipher: '${ss_cipher}'
+    password: '${ss_password}'
+    udp: true
+
+proxy-groups:
+  - name: Proxy
+    type: select
+    proxies:
+      - '${ss_name}'
+      - DIRECT
+
+rules:
+  # Google 走代理
+  - DOMAIN-SUFFIX,google.com,Proxy
+  - DOMAIN-SUFFIX,googleapis.com,Proxy
+  - DOMAIN-SUFFIX,gstatic.com,Proxy
+
+  # 其他
+  - DOMAIN-SUFFIX,ad.com,REJECT
+  - GEOIP,CN,DIRECT
+  - DOMAIN-SUFFIX,intsig.net,DIRECT
+  - MATCH,Proxy
+CLASH_EOF
+
+  chmod 600 "$CLASH_DEST"
+  ok "Config written → $CLASH_DEST (chmod 600)"
+}
+
+# ── Main proxy setup flow ──
+
+if test_proxy; then
+  # Step 0a: Already working
+  ok "Proxy is working (http://127.0.0.1:7890)"
 else
+  # Step 0b: Check if ClashX is installed
   if [[ ! -d "/Applications/ClashX.app" ]]; then
     echo ""
     echo -e "  ${RED}ClashX is NOT installed.${NC}"
@@ -58,34 +138,42 @@ else
     echo "  Download from: https://en.clashx.org/download/"
     echo "  Or search:     ClashX 1.118.0 dmg"
     echo ""
-    read -rp "  Press Enter after installing ClashX (or Enter to skip)..."
+    read -rp "  Press Enter after installing ClashX (or Enter to skip)..." _ < /dev/tty
   fi
 
-  if [[ -f "$CLASH_SRC" ]]; then
-    info "Restoring ClashX config from dotfiles..."
-    mkdir -p "$CLASH_DIR"
-    cp "$CLASH_SRC" "$CLASH_DEST"
-    ok "Config restored → $CLASH_DEST"
-  else
-    warn "No ClashX config found (not in dotfiles, not on system)"
-    echo ""
-    echo "  To configure now, paste your config below (Ctrl+D when done),"
-    echo "  or just press Ctrl+D to skip:"
-    echo ""
-    mkdir -p "$CLASH_DIR"
-    if content=$(cat 2>/dev/null) && [[ -n "$content" ]]; then
-      echo "$content" > "$CLASH_DEST"
-      ok "Config written → $CLASH_DEST"
-    else
-      warn "Skipped — no config provided"
-    fi
-  fi
-
+  # Step 0c: Check if Clash config exists
   if [[ -f "$CLASH_DEST" ]]; then
+    ok "ClashX config already exists at $CLASH_DEST"
     echo ""
-    echo -e "  ${YELLOW}Now open ClashX and enable System Proxy, then press Enter${NC}"
-    read -rp "  Press Enter when ready (or Enter to skip)..."
-    setup_proxy || warn "Proxy not reachable, continuing without proxy (downloads may be slow)"
+    echo -e "  ${YELLOW}Open ClashX and enable System Proxy, then press Enter${NC}"
+    read -rp "  Press Enter when ready..." _ < /dev/tty
+    if test_proxy; then
+      ok "Proxy is working (http://127.0.0.1:7890)"
+    else
+      warn "Proxy not reachable, continuing without proxy (downloads may be slow)"
+    fi
+  else
+    # Step 0d: No config — interactive creation
+    echo ""
+    echo -e "  ${YELLOW}No ClashX config found at $CLASH_DEST${NC}"
+    echo ""
+    read -rp "  Create config from Shadowsocks server info? [Y/n] " create_config < /dev/tty
+    if [[ ! "$create_config" =~ ^[Nn]$ ]]; then
+      create_clash_config
+
+      # Step 0e: Ask user to enable ClashX, then verify
+      echo ""
+      echo -e "  ${YELLOW}Now open ClashX and enable System Proxy, then press Enter${NC}"
+      read -rp "  Press Enter when ready..." _ < /dev/tty
+      if test_proxy; then
+        ok "Proxy is working (http://127.0.0.1:7890)"
+      else
+        warn "Proxy not reachable, continuing without proxy (downloads may be slow)"
+      fi
+    else
+      warn "Skipped proxy config — downloads may be slow"
+      echo "  You can create the config later: cp $CLASH_EXAMPLE $CLASH_DEST"
+    fi
   fi
 fi
 echo ""
@@ -106,7 +194,7 @@ fi
 
 # ─── Step 2: CLI tools via Homebrew ──────────────────────────────────────────
 info "Installing CLI tools..."
-BREW_PACKAGES=(eza bat fd ripgrep fzf zoxide tmux gh node uv)
+BREW_PACKAGES=(eza bat fd ripgrep fzf zoxide tmux gh node)
 for pkg in "${BREW_PACKAGES[@]}"; do
   if brew list "$pkg" &>/dev/null; then
     ok "$pkg already installed"
@@ -116,6 +204,19 @@ for pkg in "${BREW_PACKAGES[@]}"; do
     ok "$pkg installed"
   fi
 done
+
+# ─── Step 3.5a: uv (Python package manager) ─────────────────────────────────
+info "Checking uv..."
+if command -v uv &>/dev/null; then
+  ok "uv already installed"
+else
+  info "Installing uv..."
+  curl -LsSf https://astral.sh/uv/install.sh | sh || true
+  # Source env to get uv in PATH for this session
+  [[ -f "$HOME/.local/bin/env" ]] && . "$HOME/.local/bin/env"
+  command -v uv &>/dev/null || fail "uv installation failed. Check network/proxy and re-run."
+  ok "uv installed"
+fi
 
 # ─── Step 3: Nerd Font ──────────────────────────────────────────────────────
 info "Checking Nerd Font..."
@@ -132,7 +233,7 @@ if [[ -d "$HOME/.nvm" ]]; then
   warn "Found legacy NVM installation at ~/.nvm"
   echo -e "  Node.js is now managed by Homebrew. NVM is no longer needed."
   echo ""
-  read -rp "  Remove ~/.nvm? [y/N] " remove_nvm
+  read -rp "  Remove ~/.nvm? [y/N] " remove_nvm < /dev/tty
   if [[ "$remove_nvm" =~ ^[Yy]$ ]]; then
     rm -rf "$HOME/.nvm"
     ok "Removed ~/.nvm"
@@ -242,28 +343,32 @@ if [[ ! -f "$HOME/.secrets" ]]; then
     "INTSIG_API_KEY:Intsig API Key"
   )
 
-  # Write file header
-  echo "# Machine-specific secrets — NOT tracked by git" > "$HOME/.secrets"
-  echo "" >> "$HOME/.secrets"
+  # Create file with restrictive permissions
+  (
+    umask 077
+    echo "# Machine-specific secrets — NOT tracked by git" > "$HOME/.secrets"
+    echo "" >> "$HOME/.secrets"
+  )
 
   for secret_pair in "${secrets_to_configure[@]}"; do
     var_name="${secret_pair%%:*}"
     var_desc="${secret_pair##*:}"
 
     echo -ne "  ${BLUE}${var_desc}${NC}: "
-    read -rs secret_value
+    read -rs secret_value < /dev/tty
     echo ""
 
     if [[ -n "$secret_value" ]]; then
-      echo "export ${var_name}=${secret_value}" >> "$HOME/.secrets"
+      printf 'export %s=%q\n' "$var_name" "$secret_value" >> "$HOME/.secrets"
     else
-      echo "# export ${var_name}=your_key_here" >> "$HOME/.secrets"
+      printf '# export %s=your_key_here\n' "$var_name" >> "$HOME/.secrets"
       warn "Skipped $var_desc (edit ~/.secrets later)"
     fi
   done
 
+  chmod 600 "$HOME/.secrets"
   echo ""
-  ok "~/.secrets created"
+  ok "~/.secrets created (chmod 600)"
 else
   ok "~/.secrets already exists, not overwriting"
 fi
@@ -278,7 +383,7 @@ else
   echo -e "  ${BLUE}Interactive login will help you authenticate with GitHub.${NC}"
   echo "  This is optional — you can configure it manually later."
   echo ""
-  read -rp "  Run 'gh auth login' now? [y/N] " gh_login
+  read -rp "  Run 'gh auth login' now? [y/N] " gh_login < /dev/tty
   if [[ "$gh_login" =~ ^[Yy]$ ]]; then
     info "Starting GitHub CLI authentication..."
     if gh auth login; then

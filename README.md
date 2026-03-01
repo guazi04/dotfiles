@@ -1,6 +1,6 @@
 # dotfiles
 
-macOS terminal configuration — one command to restore on any new Mac.
+macOS terminal configuration — clone the repo and run the installer.
 
 ## Quick Start
 
@@ -8,12 +8,12 @@ macOS terminal configuration — one command to restore on any new Mac.
 # 1. Clone this repo
 git clone https://github.com/guazi04/dotfiles.git ~/dotfiles
 
-# 2. Copy your ClashX config (not in repo — has credentials)
-cp /path/to/your/clash/config.yaml ~/dotfiles/config/clash/config.yaml
-
-# 3. Run installer (ClashX config is restored first, then prompts you to enable proxy)
+# 2. Run installer (interactive proxy setup runs first)
 cd ~/dotfiles && ./install.sh
 ```
+
+The installer will guide you through proxy setup before downloading anything.
+You need a Shadowsocks server and ClashX installed as the client.
 
 ## What's Included
 
@@ -28,7 +28,11 @@ cd ~/dotfiles && ./install.sh
 
 ## Installed by `install.sh`
 
-**Tools** (via Homebrew): `eza` `bat` `fd` `ripgrep` `fzf` `zoxide` `tmux` `gh` `node` `uv`
+**Tools** (via Homebrew): `eza` `bat` `fd` `ripgrep` `fzf` `zoxide` `tmux` `gh` `node`
+
+**uv** (official installer): Python package manager ([astral.sh/uv](https://astral.sh/uv))
+
+**Bun** (official installer): JavaScript runtime ([bun.sh](https://bun.sh))
 
 **Zsh**: oh-my-zsh + Powerlevel10k + zsh-autosuggestions + zsh-syntax-highlighting + zsh-completions
 
@@ -39,19 +43,25 @@ cd ~/dotfiles && ./install.sh
 1. Set terminal font to **MesloLGS Nerd Font Mono** (14pt)
 2. Open a new terminal — Powerlevel10k wizard will auto-start
 
-## ClashX
+## Proxy Setup
 
-Clash config contains proxy credentials and is **git-ignored**. On a new Mac:
+The installer runs an interactive proxy setup as the very first step:
 
-1. Copy `config/clash/config.yaml.example` → `config/clash/config.yaml`
-2. Fill in your actual server/password
-3. Run `./install.sh` — it restores ClashX config first and waits for you to enable proxy before downloading everything else
+1. **Auto-detect**: Tests if proxy is already working at `127.0.0.1:7890`
+2. **ClashX check**: Verifies ClashX is installed, shows download URL if not
+3. **Config check**: Looks for existing config at `~/.config/clash/config.yaml`
+4. **Guided creation**: If no config exists, walks you through entering Shadowsocks server details (address, port, password, cipher) and generates the config
+5. **Verification**: Asks you to enable ClashX System Proxy, then verifies connectivity
 
-## Proxy
+**Requirements**: A Shadowsocks server. The installer will ask for:
+- Server address (required)
+- Port (default: 38883)
+- Password (required)
+- Cipher (default: chacha20-ietf-poly1305)
 
-Proxy is auto-detected at shell startup. If ClashX is running, it's enabled automatically; if not, nothing is set.
+The generated config is written to `~/.config/clash/config.yaml` with `chmod 600`. It is **never** stored in the repo.
 
-Manual control:
+Manual proxy control in the shell:
 
 ```bash
 pon   # enable proxy
@@ -75,7 +85,7 @@ The installer runs `gh auth login` interactively. Token is managed by gh's keyri
 
 ## Secrets
 
-`~/.secrets` holds machine-specific keys (git-ignored). The installer creates it interactively if it doesn't exist; an existing file is never overwritten.
+`~/.secrets` holds machine-specific keys (git-ignored, `chmod 600`). The installer creates it interactively if it doesn't exist; an existing file is never overwritten.
 
 Currently managed:
 

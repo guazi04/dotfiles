@@ -16,14 +16,12 @@ ZSH_THEME="powerlevel10k/powerlevel10k"
 plugins=(
   git                       # Git aliases & info
   zsh-autosuggestions       # Fish-like autosuggestions
-  zsh-syntax-highlighting   # Command syntax highlighting
   zsh-completions           # Additional completions
-  fzf                       # Fuzzy finder integration
-  z                         # Quick directory jump (built-in)
   extract                   # Extract any archive with `extract`
   sudo                      # Double-tap ESC to add sudo
   colored-man-pages         # Colorful man pages
   command-not-found         # Suggest package for unknown commands
+  zsh-syntax-highlighting   # Command syntax highlighting (MUST be last)
 )
 
 # Completions
@@ -176,4 +174,4 @@ topcmd() { history | awk '{print $2}' | sort | uniq -c | sort -rn | head -10; }
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
-. "$HOME/.local/bin/env"
+[[ -f "$HOME/.local/bin/env" ]] && . "$HOME/.local/bin/env"

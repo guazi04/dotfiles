@@ -11,10 +11,10 @@ DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
 echo ""
 echo "This will remove symlinks and restore backups if available."
 echo ""
-read -rp "Continue? [y/N] " answer
+read -rp "Continue? [y/N] " answer < /dev/tty
 [[ "$answer" =~ ^[Yy]$ ]] || exit 0
 
-TARGETS=("$HOME/.zshrc" "$HOME/.tmux.conf" "$HOME/.p10k.zsh")
+TARGETS=("$HOME/.zshrc" "$HOME/.tmux.conf" "$HOME/.p10k.zsh" "$HOME/.bunfig.toml")
 
 LATEST_BACKUP=$(ls -dt "$HOME/.dotfiles-backup"/*/ 2>/dev/null | head -1)
 
