@@ -3,4 +3,5 @@
 *.swo
 *~
 .secrets
+.secrets.ps1
 config/clash/config.yaml

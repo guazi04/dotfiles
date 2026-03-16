@@ -1,8 +1,12 @@
 # dotfiles
 
-macOS terminal configuration — clone the repo and run the installer.
+Cross-platform terminal configuration for macOS and Windows — clone the repo and run the installer for your OS.
 
-## Quick Start
+---
+
+## macOS
+
+### Quick Start
 
 ```bash
 # 1. Clone this repo
@@ -15,7 +19,7 @@ cd ~/dotfiles && ./install.sh
 The installer will guide you through proxy setup before downloading anything.
 You need a Shadowsocks server and ClashX installed as the client.
 
-## What's Included
+### What's Included
 
 | File | Description |
 |------|-------------|
@@ -26,7 +30,7 @@ You need a Shadowsocks server and ClashX installed as the client.
 | `install.sh` | Automated installer (idempotent, safe to re-run) |
 | `uninstall.sh` | Remove symlinks and restore backups |
 
-## Installed by `install.sh`
+### Installed by `install.sh`
 
 **Tools** (via Homebrew): `eza` `bat` `fd` `ripgrep` `fzf` `zoxide` `tmux` `gh` `node`
 
@@ -38,12 +42,12 @@ You need a Shadowsocks server and ClashX installed as the client.
 
 **Font**: MesloLGS Nerd Font
 
-## After Install
+### After Install
 
 1. Set terminal font to **MesloLGS Nerd Font Mono** (14pt)
 2. Open a new terminal — Powerlevel10k wizard will auto-start
 
-## Proxy Setup
+### Proxy Setup
 
 The installer runs an interactive proxy setup as the very first step:
 
@@ -68,7 +72,7 @@ pon   # enable proxy
 poff  # disable proxy
 ```
 
-## Python (uv)
+### Python (uv)
 
 `uv` is the default Python package manager (`UV_PYTHON_PREFERENCE=managed`).
 
@@ -79,11 +83,11 @@ poff  # disable proxy
 | `pyi` | `uv pip install` |
 | `pyu` | `uv pip install --upgrade` |
 
-## GitHub CLI
+### GitHub CLI
 
 The installer runs `gh auth login` interactively. Token is managed by gh's keyring — no environment variable needed.
 
-## Secrets
+### Secrets
 
 `~/.secrets` holds machine-specific keys (git-ignored, `chmod 600`). The installer creates it interactively if it doesn't exist; an existing file is never overwritten.
 
@@ -92,8 +96,107 @@ Currently managed:
 - `INTSIG_API_KEY` — prompted during install
 - `GITHUB_TOKEN` — managed by `gh` keyring (do not set as env var)
 
-## Uninstall
+### Uninstall
 
 ```bash
 cd ~/dotfiles && ./uninstall.sh
+```
+
+---
+
+## Windows
+
+### Prerequisites
+
+- **PowerShell 7+** (pwsh) is required. Windows PowerShell 5.1 is NOT supported.
+  ```powershell
+  winget install Microsoft.PowerShell
+  ```
+- Do **not** run the installer as Administrator — it installs to your user profile only.
+
+### Quick Start
+
+```powershell
+# 1. Clone this repo
+git clone https://github.com/guazi04/dotfiles.git $env:USERPROFILE\dotfiles
+
+# 2. Run installer with pwsh (interactive proxy setup runs first)
+cd $env:USERPROFILE\dotfiles; pwsh -File .\install.ps1
+```
+
+The installer will guide you through proxy setup before downloading anything.
+You need a Shadowsocks server and Clash Verge installed as the client.
+
+### What's Included
+
+| File | Description |
+|------|-------------|
+| `config/powershell_profile.ps1` | PowerShell profile with Oh My Posh, aliases, modern CLI tool integration |
+| `config/oh-my-posh-theme.omp.json` | Oh My Posh prompt theme with Catppuccin Mocha colors |
+| `config/windows-terminal-catppuccin.json` | Catppuccin Mocha color scheme for Windows Terminal |
+| `install.ps1` | Automated installer (idempotent, safe to re-run) |
+| `uninstall.ps1` | Remove config files and restore backups |
+
+### Installed by `install.ps1`
+
+**Tools** (via Scoop): `eza` `bat` `fd` `ripgrep` `fzf` `zoxide` `gh` `nodejs`
+
+**Oh My Posh**: Prompt theme engine with Catppuccin Mocha theme ([ohmyposh.dev](https://ohmyposh.dev))
+
+**uv** (official installer): Python package manager ([astral.sh/uv](https://astral.sh/uv))
+
+**Bun** (official installer): JavaScript runtime ([bun.sh](https://bun.sh))
+
+**Font**: MesloLGS Nerd Font (via Scoop)
+
+### After Install
+
+1. The installer tries to auto-configure Windows Terminal (`settings.json`) with:
+   - `"colorScheme": "Catppuccin Mocha"`
+   - `"font.face": "MesloLGS Nerd Font"`
+   - `"font.size": 14`
+2. If auto-configuration is skipped/failed, apply it manually:
+   Open WT Settings → click "Open JSON file" at bottom-left → merge into `"schemes"` array:
+   ```jsonc
+   {
+     "schemes": [
+       // ... existing schemes ...
+       // paste contents of config/windows-terminal-catppuccin.json here
+     ]
+   }
+   ```
+3. Open a new PowerShell window to see the new prompt
+
+### Proxy Setup
+
+The installer runs an interactive proxy setup as the very first step:
+
+1. **Auto-detect**: Tests if proxy is already working at `127.0.0.1:7890`
+2. **Clash Verge check**: Checks if Clash Verge is installed, shows download URL if not
+3. **Config check**: Looks for existing config at `~\.config\clash\config.yaml`
+4. **Guided creation**: If no config exists, walks you through entering Shadowsocks server details and generates the config
+5. **Verification**: Asks you to enable Clash Verge System Proxy, then verifies connectivity
+
+Manual proxy control in the shell:
+
+```powershell
+pon   # enable proxy
+poff  # disable proxy
+```
+
+### Python (uv)
+
+Same aliases as macOS:
+
+| Alias | Command |
+|-------|---------|
+| `pip` | `uv pip` |
+| `venv` | `uv venv` |
+| `pyi` | `uv pip install` |
+| `pyu` | `uv pip install --upgrade` |
+
+### Uninstall
+
+```powershell
+cd $env:USERPROFILE\dotfiles; .\uninstall.ps1
 ```
