@@ -141,155 +141,34 @@ Write-Host ""
 Info "Starting installation..."
 
 # ─── Step 0: Proxy (FIRST — everything else downloads faster) ────────────────
-$CLASH_DIR = Join-Path $env:USERPROFILE ".config\clash"
-$CLASH_DEST = Join-Path $CLASH_DIR "config.yaml"
 
 function Test-Proxy {
-    try {
-        $tcp = New-Object System.Net.Sockets.TcpClient
-        $tcp.Connect('127.0.0.1', 7890)
-        $tcp.Close()
-        $env:HTTP_PROXY  = 'http://127.0.0.1:7890'
-        $env:HTTPS_PROXY = 'http://127.0.0.1:7890'
-        $env:ALL_PROXY   = 'socks5://127.0.0.1:7891'
-        return $true
-    } catch {
-        return $false
+    $ports = @(1081, 7890, 10808, 1080)
+    
+    foreach ($port in $ports) {
+        try {
+            $tcp = New-Object System.Net.Sockets.TcpClient
+            $tcp.Connect('127.0.0.1', $port)
+            $tcp.Close()
+            $env:HTTP_PROXY  = "http://127.0.0.1:$port"
+            $env:HTTPS_PROXY = "http://127.0.0.1:$port"
+            $env:ALL_PROXY   = "socks5://127.0.0.1:$port"
+            # Store detected port for use in success message
+            $script:DETECTED_PROXY_PORT = $port
+            return $true
+        } catch { }
     }
+    return $false
 }
 
-function New-ClashConfig {
-    Write-Host ""
-    Info "Interactive Shadowsocks config setup"
-    Write-Host "  `e[34mEnter your Shadowsocks server details:`e[0m"
-    Write-Host ""
-
-    # Server address (required)
-    $ss_server = ''
-    while ([string]::IsNullOrEmpty($ss_server)) {
-        $ss_server = Read-Host "  Server address (required)"
-        if ([string]::IsNullOrEmpty($ss_server)) {
-            Write-Host "  `e[31mServer address is required.`e[0m"
-        }
-    }
-
-    # Port (default: 38883)
-    $ss_port = Read-Host "  Port [38883]"
-    if ([string]::IsNullOrEmpty($ss_port)) { $ss_port = '38883' }
-
-    # Password (required, hidden)
-    $ss_password = ''
-    while ([string]::IsNullOrEmpty($ss_password)) {
-        $ss_password = Read-Host "  Password (required, hidden)" -MaskInput
-        if ([string]::IsNullOrEmpty($ss_password)) {
-            Write-Host "  `e[31mPassword is required.`e[0m"
-        }
-    }
-
-    # Cipher (default: chacha20-ietf-poly1305)
-    $ss_cipher = Read-Host "  Cipher [chacha20-ietf-poly1305]"
-    if ([string]::IsNullOrEmpty($ss_cipher)) { $ss_cipher = 'chacha20-ietf-poly1305' }
-
-    # Proxy name (default: SS-proxy)
-    $ss_name = Read-Host "  Proxy name [SS-proxy]"
-    if ([string]::IsNullOrEmpty($ss_name)) { $ss_name = 'SS-proxy' }
-
-    # Generate config
-    New-Item -ItemType Directory -Path $CLASH_DIR -Force | Out-Null
-    @"
-#---------------------------------------------------#
-## 配置文件需要放置在 ~/.config/clash/*.yaml
-
-## 这份文件是 Clash Verge 的基础配置文件
-## 如果您不知道如何操作，请参阅 https://clash-verge-rev.github.io/
-#---------------------------------------------------#
-
-mode: rule
-log-level: info
-
-proxies:
-  - name: "${ss_name}"
-    type: ss
-    server: '${ss_server}'
-    port: ${ss_port}
-    cipher: '${ss_cipher}'
-    password: '${ss_password}'
-    udp: true
-
-proxy-groups:
-  - name: Proxy
-    type: select
-    proxies:
-      - '${ss_name}'
-      - DIRECT
-
-rules:
-  # Google 走代理
-  - DOMAIN-SUFFIX,google.com,Proxy
-  - DOMAIN-SUFFIX,googleapis.com,Proxy
-  - DOMAIN-SUFFIX,gstatic.com,Proxy
-
-  # 其他
-  - DOMAIN-SUFFIX,ad.com,REJECT
-  - GEOIP,CN,DIRECT
-  - DOMAIN-SUFFIX,intsig.net,DIRECT
-  - MATCH,Proxy
-"@ | Set-Content -Path $CLASH_DEST -Encoding UTF8
-    Set-SecureFileAcl -Path $CLASH_DEST
-
-    OK "Config written → $CLASH_DEST"
-}
 
 # ── Main proxy setup flow ──
 if (Test-Proxy) {
-    OK "Proxy is working (http://127.0.0.1:7890)"
+    OK "Proxy detected at 127.0.0.1:$script:DETECTED_PROXY_PORT"
 } else {
-    # Check if Clash Verge is installed
-    $clashInstalled = (Get-Command 'clash-verge' -ErrorAction SilentlyContinue) -or
-        (Test-Path "$env:LOCALAPPDATA\clash-verge") -or
-        (Test-Path "$env:LOCALAPPDATA\Clash Verge") -or
-        (Test-Path "${env:ProgramFiles}\Clash Verge")
-
-    if (-not $clashInstalled) {
-        Write-Host ""
-        Write-Host "  `e[31mClash Verge is NOT installed.`e[0m"
-        Write-Host ""
-        Write-Host "  Download from: https://github.com/clash-verge-rev/clash-verge-rev/releases"
-        Write-Host ""
-        Read-Host "  Press Enter after installing Clash Verge (or Enter to skip)"
-    }
-
-    if (Test-Path $CLASH_DEST) {
-        OK "Clash config already exists at $CLASH_DEST"
-        Write-Host ""
-        Write-Host "  `e[33mOpen Clash Verge and enable System Proxy, then press Enter`e[0m"
-        Read-Host "  Press Enter when ready"
-        if (Test-Proxy) {
-            OK "Proxy is working (http://127.0.0.1:7890)"
-        } else {
-            Warn "Proxy not reachable, continuing without proxy (downloads may be slow)"
-        }
-    } else {
-        Write-Host ""
-        Write-Host "  `e[33mNo Clash config found at $CLASH_DEST`e[0m"
-        Write-Host ""
-        $createConfig = Read-Host "  Create config from Shadowsocks server info? [Y/n]"
-        if ($createConfig -ne 'n' -and $createConfig -ne 'N') {
-            New-ClashConfig
-
-            Write-Host ""
-            Write-Host "  `e[33mNow open Clash Verge and enable System Proxy, then press Enter`e[0m"
-            Read-Host "  Press Enter when ready"
-            if (Test-Proxy) {
-                OK "Proxy is working (http://127.0.0.1:7890)"
-            } else {
-                Warn "Proxy not reachable, continuing without proxy (downloads may be slow)"
-            }
-        } else {
-            Warn "Skipped proxy config — downloads may be slow"
-        }
-    }
+    Warn "Proxy not reachable on common ports, downloads may be slow"
 }
+
 Write-Host ""
 
 # ─── Step 1: Scoop ──────────────────────────────────────────────────────────

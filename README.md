@@ -124,8 +124,7 @@ git clone https://github.com/guazi04/dotfiles.git $env:USERPROFILE\dotfiles
 cd $env:USERPROFILE\dotfiles; pwsh -File .\install.ps1
 ```
 
-The installer will guide you through proxy setup before downloading anything.
-You need a Shadowsocks server and Clash Verge installed as the client.
+The installer auto-detects local proxy on common ports (1081, 7890, 10808, 1080) before downloading.
 
 ### What's Included
 
@@ -169,19 +168,16 @@ You need a Shadowsocks server and Clash Verge installed as the client.
 
 ### Proxy Setup
 
-The installer runs an interactive proxy setup as the very first step:
+The installer auto-detects a local proxy by trying ports `1081`, `7890`, `10808`, `1080` in order. The first port that responds is used. No manual configuration needed.
 
-1. **Auto-detect**: Tests if proxy is already working at `127.0.0.1:7890`
-2. **Clash Verge check**: Checks if Clash Verge is installed, shows download URL if not
-3. **Config check**: Looks for existing config at `~\.config\clash\config.yaml`
-4. **Guided creation**: If no config exists, walks you through entering Shadowsocks server details and generates the config
-5. **Verification**: Asks you to enable Clash Verge System Proxy, then verifies connectivity
+Works with any proxy tool: Shadowsocks, Clash Verge, v2ray, etc.
 
 Manual proxy control in the shell:
 
 ```powershell
-pon   # enable proxy
-poff  # disable proxy
+pon           # auto-detect proxy port
+pon -Port 1081  # use specific port
+poff          # disable proxy
 ```
 
 ### Python (uv)

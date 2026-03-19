@@ -20,9 +20,35 @@ $env:OPENCODE_PORT = '4097'
 # Proxy (auto-detect on shell startup, manual toggle: pon / poff)
 # ============================================================
 function pon {
-    $env:HTTP_PROXY  = 'http://127.0.0.1:7890'
-    $env:HTTPS_PROXY = 'http://127.0.0.1:7890'
-    $env:ALL_PROXY   = 'socks5://127.0.0.1:7891'
+    param([int]$Port)
+    
+    $ports = @(1081, 7890, 10808, 1080)
+    $detectedPort = $null
+    
+    if ($Port) {
+        # Use provided port
+        $detectedPort = $Port
+    } else {
+        # Auto-detect: try ports in order
+        foreach ($p in $ports) {
+            try {
+                $tcp = New-Object System.Net.Sockets.TcpClient
+                $tcp.Connect('127.0.0.1', $p)
+                $tcp.Close()
+                $detectedPort = $p
+                break
+            } catch { }
+        }
+    }
+    
+    if (-not $detectedPort) {
+        Write-Host "`e[33m[WARN]`e[0m  No proxy detected on ports 1081, 7890, 10808, 1080" -ForegroundColor Yellow
+        return
+    }
+    
+    $env:HTTP_PROXY  = "http://127.0.0.1:$detectedPort"
+    $env:HTTPS_PROXY = "http://127.0.0.1:$detectedPort"
+    $env:ALL_PROXY   = "socks5://127.0.0.1:$detectedPort"
     $env:NO_PROXY    = 'localhost,127.0.0.1,::1'
     $env:http_proxy  = $env:HTTP_PROXY
     $env:https_proxy = $env:HTTPS_PROXY
@@ -37,12 +63,9 @@ function poff {
     }
 }
 
-# Auto-enable proxy if Clash is running
+# Auto-enable proxy on shell startup (silently skip if not found)
 try {
-    $tcp = New-Object System.Net.Sockets.TcpClient
-    $tcp.Connect('127.0.0.1', 7890)
-    $tcp.Close()
-    pon
+    pon -ErrorAction SilentlyContinue
 } catch { }
 
 # ============================================================
@@ -166,8 +189,8 @@ if (Get-Module -ListAvailable -Name PSReadLine) {
     Set-PSReadLineOption -EditMode Windows
     Set-PSReadLineOption -BellStyle None
     Set-PSReadLineOption -MaximumHistoryCount 10000
-    Set-PSReadLineOption -HistoryNoDuplicates $true
-    Set-PSReadLineOption -HistorySearchCursorMovesToEnd $true
+    Set-PSReadLineOption -HistoryNoDuplicates
+    Set-PSReadLineOption -HistorySearchCursorMovesToEnd
 
     # Predictive IntelliSense (PSReadLine 2.2+) — graceful fallback for older versions
     try {
@@ -201,7 +224,7 @@ if (Get-Module -ListAvailable -Name PSReadLine) {
 
     # Key bindings
     Set-PSReadLineKeyHandler -Key Tab -Function MenuComplete
-    Set-PSReadLineKeyHandler -Key Shift+Tab -Function MenuCompleteBackward
+    Set-PSReadLineKeyHandler -Key Shift+Tab -Function TabCompletePrevious
     Set-PSReadLineKeyHandler -Key UpArrow -Function HistorySearchBackward
     Set-PSReadLineKeyHandler -Key DownArrow -Function HistorySearchForward
     Set-PSReadLineKeyHandler -Key 'Ctrl+r' -Function ReverseSearchHistory
