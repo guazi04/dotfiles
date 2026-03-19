@@ -64,7 +64,7 @@ fi
 # ============================================================
 [ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
 export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:$PATH"
+export PATH="$HOME/.local/bin:$BUN_INSTALL/bin:$PATH"  # .local/bin first for iSelf shim
 
 # ============================================================
 # UV Python Manager
@@ -175,3 +175,4 @@ topcmd() { history | awk '{print $2}' | sort | uniq -c | sort -rn | head -10; }
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
 [[ -f "$HOME/.local/bin/env" ]] && . "$HOME/.local/bin/env"
+
