@@ -22,7 +22,7 @@ $env:OPENCODE_PORT = '4097'
 function pon {
     param([int]$Port)
     
-    $ports = @(1081, 7890, 10808, 1080)
+    $ports = @(7890, 1081, 10808, 1080)
     $detectedPort = $null
     
     if ($Port) {
@@ -42,7 +42,7 @@ function pon {
     }
     
     if (-not $detectedPort) {
-        Write-Host "`e[33m[WARN]`e[0m  No proxy detected on ports 1081, 7890, 10808, 1080" -ForegroundColor Yellow
+        Write-Host "`e[33m[WARN]`e[0m  No proxy detected on ports 7890, 1081, 10808, 1080" -ForegroundColor Yellow
         return
     }
     

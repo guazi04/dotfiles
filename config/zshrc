@@ -40,24 +40,41 @@ export OPENCODE_PORT=4097
 # Proxy (auto-detect on shell startup, manual toggle: pon / poff)
 # ============================================================
 pon() {
-  export http_proxy=http://127.0.0.1:7890
-  export https_proxy=http://127.0.0.1:7890
-  export all_proxy=socks5://127.0.0.1:7891
-  export no_proxy=localhost,127.0.0.1,::1
-  export HTTP_PROXY=http://127.0.0.1:7890
-  export HTTPS_PROXY=http://127.0.0.1:7890
-  export ALL_PROXY=socks5://127.0.0.1:7891
-  export NO_PROXY=localhost,127.0.0.1,::1
+  local port="${1:-}"
+  if [[ -z "$port" ]]; then
+    for p in 7890 1081 10808 1080; do
+      if nc -z -w1 127.0.0.1 "$p" 2>/dev/null; then
+        port=$p
+        break
+      fi
+    done
+  fi
+  if [[ -z "$port" ]]; then
+    echo -e "\033[33m[WARN]\033[0m  No proxy detected on ports 7890, 1081, 10808, 1080"
+    return 1
+  fi
+  export http_proxy="http://127.0.0.1:$port"
+  export https_proxy="http://127.0.0.1:$port"
+  export all_proxy="socks5://127.0.0.1:$port"
+  export no_proxy="localhost,127.0.0.1,::1"
+  export HTTP_PROXY="http://127.0.0.1:$port"
+  export HTTPS_PROXY="http://127.0.0.1:$port"
+  export ALL_PROXY="socks5://127.0.0.1:$port"
+  export NO_PROXY="localhost,127.0.0.1,::1"
 }
 
 poff() {
   unset http_proxy https_proxy all_proxy no_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY NO_PROXY
 }
 
-# Auto-enable proxy if ClashX is running
-if nc -z 127.0.0.1 7890 2>/dev/null; then
-  pon
-fi
+# Auto-enable proxy on shell startup
+for _proxy_port in 7890 1081 10808 1080; do
+  if nc -z -w1 127.0.0.1 "$_proxy_port" 2>/dev/null; then
+    pon "$_proxy_port"
+    break
+  fi
+done
+unset _proxy_port
 
 # ============================================================
 # Bun

@@ -32,12 +32,27 @@ CLASH_EXAMPLE="$DOTFILES_DIR/config/clash/config.yaml.example"
 
 # Step 0a: Test if proxy is already working
 test_proxy() {
-  if curl -sS --max-time 5 --proxy http://127.0.0.1:7890 http://www.gstatic.com/generate_204 >/dev/null 2>&1; then
-    export http_proxy=http://127.0.0.1:7890
-    export https_proxy=http://127.0.0.1:7890
-    export all_proxy=socks5://127.0.0.1:7891
-    return 0
-  fi
+  local ports=(7890 1081 10808 1080)
+  for port in "${ports[@]}"; do
+    if curl -sS --max-time 3 --proxy "http://127.0.0.1:$port" http://www.gstatic.com/generate_204 >/dev/null 2>&1; then
+      export http_proxy="http://127.0.0.1:$port"
+      export https_proxy="http://127.0.0.1:$port"
+      export all_proxy="socks5://127.0.0.1:$port"
+      DETECTED_PROXY_PORT=$port
+      return 0
+    fi
+  done
+  return 1
+}
+
+detect_proxy_tool() {
+  # Returns the name of the first detected proxy tool (installed, not necessarily running)
+  [[ -d "/Applications/ClashX.app" ]]           && echo "ClashX"           && return 0
+  [[ -d "/Applications/ClashX Pro.app" ]]        && echo "ClashX Pro"       && return 0
+  [[ -d "/Applications/Clash Verge.app" ]]       && echo "Clash Verge"      && return 0
+  [[ -d "/Applications/Clash Verge Rev.app" ]]   && echo "Clash Verge Rev"  && return 0
+  [[ -d "/Applications/V2RayU.app" ]]            && echo "V2RayU"           && return 0
+  [[ -d "/Applications/ShadowsocksX-NG.app" ]]   && echo "ShadowsocksX-NG" && return 0
   return 1
 }
 
@@ -127,52 +142,65 @@ CLASH_EOF
 # ── Main proxy setup flow ──
 
 if test_proxy; then
-  # Step 0a: Already working
-  ok "Proxy is working (http://127.0.0.1:7890)"
+  ok "Proxy is working (127.0.0.1:$DETECTED_PROXY_PORT)"
 else
-  # Step 0b: Check if ClashX is installed
-  if [[ ! -d "/Applications/ClashX.app" ]]; then
+  # Step 0b: Detect installed proxy tools
+  PROXY_TOOL=$(detect_proxy_tool) || true
+  if [[ -n "$PROXY_TOOL" ]]; then
+    warn "$PROXY_TOOL is installed but proxy is not reachable on ports 7890, 1081, 10808, 1080"
     echo ""
-    echo -e "  ${RED}ClashX is NOT installed.${NC}"
-    echo ""
-    echo "  Download from: https://en.clashx.org/download/"
-    echo "  Or search:     ClashX 1.118.0 dmg"
-    echo ""
-    read -rp "  Press Enter after installing ClashX (or Enter to skip)..." _ < /dev/tty
-  fi
-
-  # Step 0c: Check if Clash config exists
-  if [[ -f "$CLASH_DEST" ]]; then
-    ok "ClashX config already exists at $CLASH_DEST"
-    echo ""
-    echo -e "  ${YELLOW}Open ClashX and enable System Proxy, then press Enter${NC}"
-    read -rp "  Press Enter when ready..." _ < /dev/tty
+    echo -e "  ${YELLOW}Please start $PROXY_TOOL and enable System Proxy, then press Enter${NC}"
+    read -rp "  Press Enter when ready (or Enter to skip)..." _ < /dev/tty
     if test_proxy; then
-      ok "Proxy is working (http://127.0.0.1:7890)"
+      ok "Proxy is working (127.0.0.1:$DETECTED_PROXY_PORT)"
     else
-      warn "Proxy not reachable, continuing without proxy (downloads may be slow)"
+      warn "Proxy still not reachable, continuing without proxy (downloads may be slow)"
     fi
   else
-    # Step 0d: No config — interactive creation
     echo ""
-    echo -e "  ${YELLOW}No ClashX config found at $CLASH_DEST${NC}"
+    echo -e "  ${YELLOW}No proxy tool detected.${NC}"
     echo ""
-    read -rp "  Create config from Shadowsocks server info? [Y/n] " create_config < /dev/tty
-    if [[ ! "$create_config" =~ ^[Nn]$ ]]; then
-      create_clash_config
+    echo "  Supported tools: ClashX, Clash Verge, V2RayU, ShadowsocksX-NG"
+    echo "  Recommended:     Clash Verge Rev — https://github.com/clash-verge-rev/clash-verge-rev/releases"
+    echo ""
+    read -rp "  Press Enter after installing a proxy tool (or Enter to skip)..." _ < /dev/tty
+    # Re-detect after user potentially installed something
+    PROXY_TOOL=$(detect_proxy_tool) || true
+  fi
 
-      # Step 0e: Ask user to enable ClashX, then verify
-      echo ""
-      echo -e "  ${YELLOW}Now open ClashX and enable System Proxy, then press Enter${NC}"
-      read -rp "  Press Enter when ready..." _ < /dev/tty
-      if test_proxy; then
-        ok "Proxy is working (http://127.0.0.1:7890)"
-      else
-        warn "Proxy not reachable, continuing without proxy (downloads may be slow)"
+  # Step 0c: Check / create Clash config (for Clash-based tools)
+  if [[ -n "$PROXY_TOOL" ]] && [[ "$PROXY_TOOL" == Clash* ]]; then
+    if [[ -f "$CLASH_DEST" ]]; then
+      ok "Clash config already exists at $CLASH_DEST"
+      if ! test_proxy; then
+        echo ""
+        echo -e "  ${YELLOW}Open $PROXY_TOOL and enable System Proxy, then press Enter${NC}"
+        read -rp "  Press Enter when ready..." _ < /dev/tty
+        if test_proxy; then
+          ok "Proxy is working (127.0.0.1:$DETECTED_PROXY_PORT)"
+        else
+          warn "Proxy not reachable, continuing without proxy (downloads may be slow)"
+        fi
       fi
     else
-      warn "Skipped proxy config — downloads may be slow"
-      echo "  You can create the config later: cp $CLASH_EXAMPLE $CLASH_DEST"
+      echo ""
+      echo -e "  ${YELLOW}No Clash config found at $CLASH_DEST${NC}"
+      echo ""
+      read -rp "  Create config from Shadowsocks server info? [Y/n] " create_config < /dev/tty
+      if [[ ! "$create_config" =~ ^[Nn]$ ]]; then
+        create_clash_config
+        echo ""
+        echo -e "  ${YELLOW}Now open $PROXY_TOOL and enable System Proxy, then press Enter${NC}"
+        read -rp "  Press Enter when ready..." _ < /dev/tty
+        if test_proxy; then
+          ok "Proxy is working (127.0.0.1:$DETECTED_PROXY_PORT)"
+        else
+          warn "Proxy not reachable, continuing without proxy (downloads may be slow)"
+        fi
+      else
+        warn "Skipped proxy config — downloads may be slow"
+        echo "  You can create the config later: cp $CLASH_EXAMPLE $CLASH_DEST"
+      fi
     fi
   fi
 fi

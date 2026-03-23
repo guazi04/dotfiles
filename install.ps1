@@ -143,7 +143,7 @@ Info "Starting installation..."
 # ─── Step 0: Proxy (FIRST — everything else downloads faster) ────────────────
 
 function Test-Proxy {
-    $ports = @(1081, 7890, 10808, 1080)
+    $ports = @(7890, 1081, 10808, 1080)
     
     foreach ($port in $ports) {
         try {
@@ -161,12 +161,186 @@ function Test-Proxy {
     return $false
 }
 
+function Find-ProxyTool {
+    # Check running processes first
+    $processMap = @(
+        @{ Name = 'Clash Verge Rev'; Process = 'clash-verge' }
+        @{ Name = 'Clash Verge';     Process = 'clash-verge' }
+        @{ Name = 'v2rayN';          Process = 'v2rayN' }
+        @{ Name = 'Shadowsocks';     Process = 'Shadowsocks' }
+    )
+    foreach ($tool in $processMap) {
+        if (Get-Process -Name $tool.Process -ErrorAction SilentlyContinue) {
+            return $tool.Name
+        }
+    }
+
+    # Check common installation paths
+    $pathMap = @(
+        @{ Name = 'Clash Verge Rev'; Paths = @("$env:LOCALAPPDATA\clash-verge", "$env:ProgramFiles\Clash Verge Rev") }
+        @{ Name = 'v2rayN';          Paths = @("$env:ProgramFiles\v2rayN", "$env:LOCALAPPDATA\v2rayN", "${env:ProgramFiles(x86)}\v2rayN") }
+        @{ Name = 'Shadowsocks';     Paths = @("$env:ProgramFiles\Shadowsocks", "$env:LOCALAPPDATA\Shadowsocks") }
+    )
+    foreach ($tool in $pathMap) {
+        foreach ($p in $tool.Paths) {
+            if (Test-Path $p) { return $tool.Name }
+        }
+    }
+
+    return $null
+}
+
+function New-ClashConfig {
+    $clashDir  = Join-Path $env:USERPROFILE ".config\clash"
+    $clashDest = Join-Path $clashDir "config.yaml"
+
+    Write-Host ""
+    Info "Interactive Shadowsocks config setup"
+    Write-Host "  `e[34mEnter your Shadowsocks server details:`e[0m"
+    Write-Host ""
+
+    # Server address (required)
+    $ssServer = ''
+    while ([string]::IsNullOrWhiteSpace($ssServer)) {
+        $ssServer = Read-Host "  Server address (required)"
+        if ([string]::IsNullOrWhiteSpace($ssServer)) {
+            Write-Host "  `e[31mServer address is required.`e[0m"
+        }
+    }
+
+    # Port (default: 38883)
+    $ssPort = Read-Host "  Port [38883]"
+    if ([string]::IsNullOrWhiteSpace($ssPort)) { $ssPort = '38883' }
+
+    # Password (required, hidden)
+    $ssPassword = ''
+    while ([string]::IsNullOrWhiteSpace($ssPassword)) {
+        $ssPassword = Read-Host "  Password (required, hidden)" -MaskInput
+        if ([string]::IsNullOrWhiteSpace($ssPassword)) {
+            Write-Host "  `e[31mPassword is required.`e[0m"
+        }
+    }
+
+    # Cipher (default: chacha20-ietf-poly1305)
+    $ssCipher = Read-Host "  Cipher [chacha20-ietf-poly1305]"
+    if ([string]::IsNullOrWhiteSpace($ssCipher)) { $ssCipher = 'chacha20-ietf-poly1305' }
+
+    # Proxy name (default: SS-proxy)
+    $ssName = Read-Host "  Proxy name [SS-proxy]"
+    if ([string]::IsNullOrWhiteSpace($ssName)) { $ssName = 'SS-proxy' }
+
+    # Generate config
+    New-Item -ItemType Directory -Path $clashDir -Force | Out-Null
+    @"
+#---------------------------------------------------#
+## 配置文件需要放置在 `$HOME/.config/clash/*.yaml
+
+## 这份文件是clashX的基础配置文件，请尽量新建配置文件进行修改。
+## 端口设置请在 菜单条图标->配置->更多配置 中进行修改
+
+## 如果您不知道如何操作，请参阅 官方Github文档 https://dreamacro.github.io/clash/
+#---------------------------------------------------#
+
+mode: rule
+log-level: info
+
+proxies:
+  - name: "${ssName}"
+    type: ss
+    server: '${ssServer}'
+    port: ${ssPort}
+    cipher: '${ssCipher}'
+    password: '${ssPassword}'
+    udp: true
+
+proxy-groups:
+  - name: Proxy
+    type: select
+    proxies:
+      - '${ssName}'
+      - DIRECT
+
+rules:
+  # Google 走代理
+  - DOMAIN-SUFFIX,google.com,Proxy
+  - DOMAIN-SUFFIX,googleapis.com,Proxy
+  - DOMAIN-SUFFIX,gstatic.com,Proxy
+
+  # 其他
+  - DOMAIN-SUFFIX,ad.com,REJECT
+  - GEOIP,CN,DIRECT
+  - DOMAIN-SUFFIX,intsig.net,DIRECT
+  - MATCH,Proxy
+"@ | Set-Content -Path $clashDest -Encoding UTF8
+
+    Set-SecureFileAcl -Path $clashDest
+    OK "Config written → $clashDest (owner-only ACL)"
+}
 
 # ── Main proxy setup flow ──
+$clashDir  = Join-Path $env:USERPROFILE ".config\clash"
+$clashDest = Join-Path $clashDir "config.yaml"
+
 if (Test-Proxy) {
     OK "Proxy detected at 127.0.0.1:$script:DETECTED_PROXY_PORT"
 } else {
-    Warn "Proxy not reachable on common ports, downloads may be slow"
+    # Step 0b: Detect installed proxy tools
+    $proxyTool = Find-ProxyTool
+    if ($proxyTool) {
+        Warn "$proxyTool is installed but proxy is not reachable on ports 7890, 1081, 10808, 1080"
+        Write-Host ""
+        Write-Host "  `e[33mPlease start $proxyTool and enable System Proxy, then press Enter`e[0m"
+        Read-Host "  Press Enter when ready (or Enter to skip)" | Out-Null
+        if (Test-Proxy) {
+            OK "Proxy is working (127.0.0.1:$script:DETECTED_PROXY_PORT)"
+        } else {
+            Warn "Proxy still not reachable, continuing without proxy (downloads may be slow)"
+        }
+    } else {
+        Write-Host ""
+        Write-Host "  `e[33mNo proxy tool detected.`e[0m"
+        Write-Host ""
+        Write-Host "  Supported tools: Clash Verge Rev, v2rayN, Shadowsocks"
+        Write-Host "  Recommended:     Clash Verge Rev — https://github.com/clash-verge-rev/clash-verge-rev/releases"
+        Write-Host ""
+        Read-Host "  Press Enter after installing a proxy tool (or Enter to skip)" | Out-Null
+        $proxyTool = Find-ProxyTool
+    }
+
+    # Step 0c: Check / create Clash config (for Clash-based tools)
+    if ($proxyTool -and $proxyTool -like 'Clash*') {
+        if (Test-Path $clashDest) {
+            OK "Clash config already exists at $clashDest"
+            if (-not (Test-Proxy)) {
+                Write-Host ""
+                Write-Host "  `e[33mOpen $proxyTool and enable System Proxy, then press Enter`e[0m"
+                Read-Host "  Press Enter when ready" | Out-Null
+                if (Test-Proxy) {
+                    OK "Proxy is working (127.0.0.1:$script:DETECTED_PROXY_PORT)"
+                } else {
+                    Warn "Proxy not reachable, continuing without proxy (downloads may be slow)"
+                }
+            }
+        } else {
+            Write-Host ""
+            Write-Host "  `e[33mNo Clash config found at $clashDest`e[0m"
+            Write-Host ""
+            $createConfig = Read-Host "  Create config from Shadowsocks server info? [Y/n]"
+            if ($createConfig -ne 'n' -and $createConfig -ne 'N') {
+                New-ClashConfig
+                Write-Host ""
+                Write-Host "  `e[33mNow open $proxyTool and enable System Proxy, then press Enter`e[0m"
+                Read-Host "  Press Enter when ready" | Out-Null
+                if (Test-Proxy) {
+                    OK "Proxy is working (127.0.0.1:$script:DETECTED_PROXY_PORT)"
+                } else {
+                    Warn "Proxy not reachable, continuing without proxy (downloads may be slow)"
+                }
+            } else {
+                Warn "Skipped proxy config — downloads may be slow"
+            }
+        }
+    }
 }
 
 Write-Host ""
@@ -191,7 +365,7 @@ if ($scoopBuckets -notmatch 'extras') {
 
 # ─── Step 2: CLI tools via Scoop ────────────────────────────────────────────
 Info "Installing CLI tools..."
-$SCOOP_PACKAGES = @('eza', 'bat', 'fd', 'ripgrep', 'fzf', 'zoxide', 'gh', 'nodejs')
+$SCOOP_PACKAGES = @('eza', 'bat', 'fd', 'ripgrep', 'fzf', 'zoxide', 'gh', 'nodejs', 'wezterm')
 foreach ($pkg in $SCOOP_PACKAGES) {
     $installed = scoop list $pkg 2>&1 | Out-String
     if ($installed -match [regex]::Escape($pkg)) {
@@ -284,6 +458,13 @@ Install-LinkedConfig -Source $ompSource -Destination $ompDest -BackupName "theme
 $bunfigDest = Join-Path $env:USERPROFILE ".bunfig.toml"
 $bunfigSource = Join-Path $DOTFILES_DIR "config\bunfig.toml"
 Install-LinkedConfig -Source $bunfigSource -Destination $bunfigDest -BackupName ".bunfig.toml" -Label "bunfig.toml"
+
+# WezTerm config
+$weztermDir = Join-Path $env:USERPROFILE ".config\wezterm"
+New-Item -ItemType Directory -Path $weztermDir -Force | Out-Null
+$weztermDest = Join-Path $weztermDir "wezterm.lua"
+$weztermSource = Join-Path $DOTFILES_DIR "config\wezterm.lua"
+Install-LinkedConfig -Source $weztermSource -Destination $weztermDest -BackupName "wezterm.lua" -Label "WezTerm config"
 
 # Windows Terminal setup
 Write-Host ""

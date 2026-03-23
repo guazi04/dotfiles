@@ -17,7 +17,7 @@ cd ~/dotfiles && ./install.sh
 ```
 
 The installer will guide you through proxy setup before downloading anything.
-You need a Shadowsocks server and ClashX installed as the client.
+Works with any proxy tool: Clash Verge, ClashX, V2RayU, ShadowsocksX-NG, etc.
 
 ### What's Included
 
@@ -51,25 +51,27 @@ You need a Shadowsocks server and ClashX installed as the client.
 
 The installer runs an interactive proxy setup as the very first step:
 
-1. **Auto-detect**: Tests if proxy is already working at `127.0.0.1:7890`
-2. **ClashX check**: Verifies ClashX is installed, shows download URL if not
-3. **Config check**: Looks for existing config at `~/.config/clash/config.yaml`
-4. **Guided creation**: If no config exists, walks you through entering Shadowsocks server details (address, port, password, cipher) and generates the config
-5. **Verification**: Asks you to enable ClashX System Proxy, then verifies connectivity
+1. **Auto-detect**: Scans local ports `7890`, `1081`, `10808`, `1080` — the first responding port is used
+2. **Tool detection**: Checks for installed proxy tools (ClashX, Clash Verge, V2RayU, ShadowsocksX-NG)
+3. **Guided startup**: If a tool is found but not running, prompts you to start it
+4. **Config check**: For Clash-based tools, looks for existing config at `~/.config/clash/config.yaml`
+5. **Guided creation**: If no config exists, walks you through entering Shadowsocks server details (address, port, password, cipher) and generates the config
+6. **Verification**: Re-tests connectivity after each step
 
-**Requirements**: A Shadowsocks server. The installer will ask for:
-- Server address (required)
-- Port (default: 38883)
-- Password (required)
-- Cipher (default: chacha20-ietf-poly1305)
+**Supported proxy tools** (any of these will work):
+- Clash Verge Rev (recommended) — https://github.com/clash-verge-rev/clash-verge-rev/releases
+- ClashX / ClashX Pro
+- V2RayU
+- ShadowsocksX-NG
 
 The generated config is written to `~/.config/clash/config.yaml` with `chmod 600`. It is **never** stored in the repo.
 
 Manual proxy control in the shell:
 
 ```bash
-pon   # enable proxy
-poff  # disable proxy
+pon        # auto-detect proxy port (scans 7890, 1081, 10808, 1080)
+pon 1081   # use specific port
+poff       # disable proxy
 ```
 
 ### Python (uv)
@@ -124,7 +126,8 @@ git clone https://github.com/guazi04/dotfiles.git $env:USERPROFILE\dotfiles
 cd $env:USERPROFILE\dotfiles; pwsh -File .\install.ps1
 ```
 
-The installer auto-detects local proxy on common ports (1081, 7890, 10808, 1080) before downloading.
+The installer will guide you through proxy setup before downloading anything.
+Works with any proxy tool: Clash Verge, v2rayN, Shadowsocks, etc.
 
 ### What's Included
 
@@ -135,10 +138,13 @@ The installer auto-detects local proxy on common ports (1081, 7890, 10808, 1080)
 | `config/windows-terminal-catppuccin.json` | Catppuccin Mocha color scheme for Windows Terminal |
 | `install.ps1` | Automated installer (idempotent, safe to re-run) |
 | `uninstall.ps1` | Remove config files and restore backups |
+| `config/wezterm.lua` | WezTerm config with Catppuccin Mocha theme, tmux-style keybindings, session persistence |
 
 ### Installed by `install.ps1`
 
 **Tools** (via Scoop): `eza` `bat` `fd` `ripgrep` `fzf` `zoxide` `gh` `nodejs`
+
+**WezTerm**: Terminal multiplexer with session persistence ([wezfurlong.org/wezterm](https://wezfurlong.org/wezterm))
 
 **Oh My Posh**: Prompt theme engine with Catppuccin Mocha theme ([ohmyposh.dev](https://ohmyposh.dev))
 
@@ -166,18 +172,54 @@ The installer auto-detects local proxy on common ports (1081, 7890, 10808, 1080)
    ```
 3. Open a new PowerShell window to see the new prompt
 
+### WezTerm (Terminal Multiplexer)
+
+WezTerm provides tmux-like session persistence on Windows — your terminal sessions survive closing the window. Sessions are managed by a background mux server using Named Pipes.
+
+**How it works:**
+- **First launch**: WezTerm starts a background mux server and connects to it
+- **Close window**: Sessions keep running in the background
+- **Relaunch**: WezTerm reconnects to the existing mux server — all tabs and panes restored
+- **Detach**: Press `CTRL+B`, then `d` to detach cleanly (window closes, sessions persist)
+
+**Key bindings** (Leader = `CTRL+B`, same as tmux prefix):
+
+| Key | Action |
+|-----|--------|
+| `Leader` + `\|` | Split pane horizontally |
+| `Leader` + `-` | Split pane vertically |
+| `Leader` + `c` | New tab |
+| `Leader` + `h/j/k/l` | Navigate panes (vim-style) |
+| `Leader` + `H/J/K/L` | Resize panes (5 units) |
+| `Leader` + `1-9` | Switch to tab by number |
+| `Leader` + `x` | Close current pane |
+| `Leader` + `d` | Detach (session persists) |
+| `Leader` + `r` | Reload config |
+
+The status bar shows the workspace name (left) and date/time (right), matching the tmux layout.
+
 ### Proxy Setup
 
-The installer auto-detects a local proxy by trying ports `1081`, `7890`, `10808`, `1080` in order. The first port that responds is used. No manual configuration needed.
+The installer runs an interactive proxy setup as the very first step:
 
-Works with any proxy tool: Shadowsocks, Clash Verge, v2ray, etc.
+1. **Auto-detect**: Scans local ports `7890`, `1081`, `10808`, `1080` — the first responding port is used
+2. **Tool detection**: Checks for installed proxy tools (Clash Verge Rev, v2rayN, Shadowsocks)
+3. **Guided startup**: If a tool is found but not running, prompts you to start it
+4. **Config check**: For Clash-based tools, looks for existing config at `~/.config/clash/config.yaml`
+5. **Guided creation**: If no config exists, walks you through entering Shadowsocks server details (address, port, password, cipher) and generates the config
+6. **Verification**: Re-tests connectivity after each step
+
+**Supported proxy tools** (any of these will work):
+- Clash Verge Rev (recommended) — https://github.com/clash-verge-rev/clash-verge-rev/releases
+- v2rayN
+- Shadowsocks
 
 Manual proxy control in the shell:
 
 ```powershell
-pon           # auto-detect proxy port
-pon -Port 1081  # use specific port
-poff          # disable proxy
+pon              # auto-detect proxy port (scans 7890, 1081, 10808, 1080)
+pon -Port 1081   # use specific port
+poff             # disable proxy
 ```
 
 ### Python (uv)
