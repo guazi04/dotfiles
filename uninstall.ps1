@@ -24,7 +24,8 @@ if ($answer -ne 'y' -and $answer -ne 'Y') { exit 0 }
 $targets = @(
     $PROFILE,
     (Join-Path $env:USERPROFILE ".config\oh-my-posh\theme.omp.json"),
-    (Join-Path $env:USERPROFILE ".bunfig.toml")
+    (Join-Path $env:USERPROFILE ".bunfig.toml"),
+    (Join-Path $env:USERPROFILE ".config\wezterm\wezterm.lua")
 )
 
 # Find latest backup
@@ -73,6 +74,6 @@ foreach ($target in $targets) {
 Write-Host ""
 Write-Host "`e[32mUninstall complete.`e[0m Installed tools (Scoop packages, Oh My Posh, etc.) were NOT removed."
 Write-Host "To remove those manually:"
-Write-Host "  scoop uninstall eza bat fd ripgrep fzf zoxide oh-my-posh gh nodejs"
+Write-Host "  scoop uninstall eza bat fd ripgrep fzf zoxide oh-my-posh gh nodejs wezterm"
 Write-Host "  scoop uninstall nerd-fonts/Meslo-NF"
 Write-Host ""
