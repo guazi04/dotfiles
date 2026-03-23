@@ -49,8 +49,8 @@ detect_proxy_tool() {
   # Returns the name of the first detected proxy tool (installed, not necessarily running)
   [[ -d "/Applications/ClashX.app" ]]           && echo "ClashX"           && return 0
   [[ -d "/Applications/ClashX Pro.app" ]]        && echo "ClashX Pro"       && return 0
-  [[ -d "/Applications/Clash Verge.app" ]]       && echo "Clash Verge"      && return 0
   [[ -d "/Applications/Clash Verge Rev.app" ]]   && echo "Clash Verge Rev"  && return 0
+  [[ -d "/Applications/Clash Verge.app" ]]       && echo "Clash Verge"      && return 0
   [[ -d "/Applications/V2RayU.app" ]]            && echo "V2RayU"           && return 0
   [[ -d "/Applications/ShadowsocksX-NG.app" ]]   && echo "ShadowsocksX-NG" && return 0
   return 1
@@ -160,12 +160,43 @@ else
     echo ""
     echo -e "  ${YELLOW}No proxy tool detected.${NC}"
     echo ""
-    echo "  Supported tools: ClashX, Clash Verge, V2RayU, ShadowsocksX-NG"
-    echo "  Recommended:     Clash Verge Rev — https://github.com/clash-verge-rev/clash-verge-rev/releases"
+    echo "  Recommended: Clash Verge Rev"
+    echo "    Why: rule-based routing works with OpenCode and other development tools"
+    echo "         (plain Shadowsocks-style global tunneling can break API routing)"
+    echo ""
+    echo "  Supported tools: Clash Verge Rev, ClashX, Clash Verge, V2RayU, ShadowsocksX-NG"
+    echo ""
+    if command -v brew &>/dev/null; then
+      read -rp "  Auto-install Clash Verge Rev now via Homebrew? [Y/n] " install_clash_verge_rev < /dev/tty
+      if [[ ! "$install_clash_verge_rev" =~ ^[Nn]$ ]]; then
+        info "Installing Clash Verge Rev via Homebrew cask..."
+        if brew install --cask clash-verge-rev; then
+          ok "Clash Verge Rev installed"
+        else
+          warn "Auto-install failed. Download manually: https://github.com/clash-verge-rev/clash-verge-rev/releases"
+        fi
+      else
+        warn "Skipped auto-install"
+      fi
+    else
+      warn "Homebrew is not available yet in Step 0"
+      echo "  Download Clash Verge Rev: https://github.com/clash-verge-rev/clash-verge-rev/releases"
+    fi
+    echo ""
+    echo "  Next in Clash Verge Rev:"
+    echo "    1) Open the app"
+    echo "    2) Import or create a config"
+    echo "       (you can use $CLASH_DEST after generating it below)"
+    echo "    3) Enable System Proxy"
     echo ""
     read -rp "  Press Enter after installing a proxy tool (or Enter to skip)..." _ < /dev/tty
     # Re-detect after user potentially installed something
     PROXY_TOOL=$(detect_proxy_tool) || true
+    if test_proxy; then
+      ok "Proxy is working (127.0.0.1:$DETECTED_PROXY_PORT)"
+    else
+      warn "Proxy still not reachable, continuing without proxy (downloads may be slow)"
+    fi
   fi
 
   # Step 0c: Check / create Clash config (for Clash-based tools)

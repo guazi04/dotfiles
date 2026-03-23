@@ -164,8 +164,7 @@ function Test-Proxy {
 function Find-ProxyTool {
     # Check running processes first
     $processMap = @(
-        @{ Name = 'Clash Verge Rev'; Process = 'clash-verge' }
-        @{ Name = 'Clash Verge';     Process = 'clash-verge' }
+        @{ Name = 'Clash Verge Rev / Clash Verge'; Process = 'clash-verge' }
         @{ Name = 'v2rayN';          Process = 'v2rayN' }
         @{ Name = 'Shadowsocks';     Process = 'Shadowsocks' }
     )
@@ -178,6 +177,7 @@ function Find-ProxyTool {
     # Check common installation paths
     $pathMap = @(
         @{ Name = 'Clash Verge Rev'; Paths = @("$env:LOCALAPPDATA\clash-verge", "$env:ProgramFiles\Clash Verge Rev") }
+        @{ Name = 'Clash Verge';     Paths = @("$env:ProgramFiles\Clash Verge", "$env:LOCALAPPDATA\Clash Verge") }
         @{ Name = 'v2rayN';          Paths = @("$env:ProgramFiles\v2rayN", "$env:LOCALAPPDATA\v2rayN", "${env:ProgramFiles(x86)}\v2rayN") }
         @{ Name = 'Shadowsocks';     Paths = @("$env:ProgramFiles\Shadowsocks", "$env:LOCALAPPDATA\Shadowsocks") }
     )
@@ -300,11 +300,43 @@ if (Test-Proxy) {
         Write-Host ""
         Write-Host "  `e[33mNo proxy tool detected.`e[0m"
         Write-Host ""
+        Write-Host "  Recommended: Clash Verge Rev"
+        Write-Host "    Why: rule-based routing works with OpenCode and other development tools"
+        Write-Host "         (plain Shadowsocks-style global tunneling can break API routing)"
+        Write-Host ""
         Write-Host "  Supported tools: Clash Verge Rev, v2rayN, Shadowsocks"
-        Write-Host "  Recommended:     Clash Verge Rev — https://github.com/clash-verge-rev/clash-verge-rev/releases"
+        Write-Host ""
+        if (Get-Command winget -ErrorAction SilentlyContinue) {
+            $installClashVergeRev = Read-Host "  Auto-install Clash Verge Rev now via winget? [Y/n]"
+            if ($installClashVergeRev -ne 'n' -and $installClashVergeRev -ne 'N') {
+                Info "Installing Clash Verge Rev via winget..."
+                winget install --id ClashVergeRev.ClashVergeRev -e --accept-package-agreements --accept-source-agreements
+                if ($LASTEXITCODE -eq 0) {
+                    OK "Clash Verge Rev installed"
+                } else {
+                    Warn "Auto-install failed. Download manually: https://github.com/clash-verge-rev/clash-verge-rev/releases"
+                }
+            } else {
+                Warn "Skipped auto-install"
+            }
+        } else {
+            Warn "winget is not available on this system"
+            Write-Host "  Download Clash Verge Rev: https://github.com/clash-verge-rev/clash-verge-rev/releases"
+        }
+        Write-Host ""
+        Write-Host "  Next in Clash Verge Rev:"
+        Write-Host "    1) Open the app"
+        Write-Host "    2) Import or create a config"
+        Write-Host "       (you can use $clashDest after generating it below)"
+        Write-Host "    3) Enable System Proxy"
         Write-Host ""
         Read-Host "  Press Enter after installing a proxy tool (or Enter to skip)" | Out-Null
         $proxyTool = Find-ProxyTool
+        if (Test-Proxy) {
+            OK "Proxy is working (127.0.0.1:$script:DETECTED_PROXY_PORT)"
+        } else {
+            Warn "Proxy still not reachable, continuing without proxy (downloads may be slow)"
+        }
     }
 
     # Step 0c: Check / create Clash config (for Clash-based tools)

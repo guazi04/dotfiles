@@ -17,7 +17,8 @@ cd ~/dotfiles && ./install.sh
 ```
 
 The installer will guide you through proxy setup before downloading anything.
-Works with any proxy tool: Clash Verge, ClashX, V2RayU, ShadowsocksX-NG, etc.
+Clash-based clients are strongly recommended (Clash Verge Rev first) because rule-based routing is required by tools like OpenCode.
+Other clients are still detected, but may not work with all development tools.
 
 ### What's Included
 
@@ -52,15 +53,23 @@ Works with any proxy tool: Clash Verge, ClashX, V2RayU, ShadowsocksX-NG, etc.
 The installer runs an interactive proxy setup as the very first step:
 
 1. **Auto-detect**: Scans local ports `7890`, `1081`, `10808`, `1080` — the first responding port is used
-2. **Tool detection**: Checks for installed proxy tools (ClashX, Clash Verge, V2RayU, ShadowsocksX-NG)
+2. **Tool detection**: Checks for installed proxy tools (Clash Verge Rev, ClashX/ClashX Pro, Clash Verge, V2RayU, ShadowsocksX-NG)
 3. **Guided startup**: If a tool is found but not running, prompts you to start it
 4. **Config check**: For Clash-based tools, looks for existing config at `~/.config/clash/config.yaml`
 5. **Guided creation**: If no config exists, walks you through entering Shadowsocks server details (address, port, password, cipher) and generates the config
-6. **Verification**: Re-tests connectivity after each step
+6. **Verification**: Re-tests connectivity at key checkpoints after prompts
 
-**Supported proxy tools** (any of these will work):
-- Clash Verge Rev (recommended) — https://github.com/clash-verge-rev/clash-verge-rev/releases
+If no proxy tool is detected, the installer recommends Clash Verge Rev first.
+- If Homebrew is already available, it offers auto-install via `brew install --cask clash-verge-rev`
+- Otherwise it shows the official release download URL
+
+**Primary recommendation (best compatibility):**
+- Clash Verge Rev — https://github.com/clash-verge-rev/clash-verge-rev/releases
+  - Clash-based rule routing is compatible with OpenCode and other development tools
+
+**Also supported** (detected by installer, but may not work with all development tools):
 - ClashX / ClashX Pro
+- Clash Verge
 - V2RayU
 - ShadowsocksX-NG
 
@@ -127,7 +136,8 @@ cd $env:USERPROFILE\dotfiles; pwsh -File .\install.ps1
 ```
 
 The installer will guide you through proxy setup before downloading anything.
-Works with any proxy tool: Clash Verge, v2rayN, Shadowsocks, etc.
+Clash-based clients are strongly recommended (Clash Verge Rev first) because rule-based routing is required by tools like OpenCode.
+Other clients are still detected, but may not work with all development tools.
 
 ### What's Included
 
@@ -203,14 +213,21 @@ The status bar shows the workspace name (left) and date/time (right), matching t
 The installer runs an interactive proxy setup as the very first step:
 
 1. **Auto-detect**: Scans local ports `7890`, `1081`, `10808`, `1080` — the first responding port is used
-2. **Tool detection**: Checks for installed proxy tools (Clash Verge Rev, v2rayN, Shadowsocks)
+2. **Tool detection**: Checks for installed proxy tools (Clash Verge Rev / Clash Verge, v2rayN, Shadowsocks)
 3. **Guided startup**: If a tool is found but not running, prompts you to start it
 4. **Config check**: For Clash-based tools, looks for existing config at `~/.config/clash/config.yaml`
 5. **Guided creation**: If no config exists, walks you through entering Shadowsocks server details (address, port, password, cipher) and generates the config
-6. **Verification**: Re-tests connectivity after each step
+6. **Verification**: Re-tests connectivity at key checkpoints after prompts
 
-**Supported proxy tools** (any of these will work):
-- Clash Verge Rev (recommended) — https://github.com/clash-verge-rev/clash-verge-rev/releases
+If no proxy tool is detected, the installer recommends Clash Verge Rev first.
+- If `winget` is available, it offers auto-install via `winget install --id ClashVergeRev.ClashVergeRev -e --accept-package-agreements --accept-source-agreements`
+- Otherwise it shows the official release download URL
+
+**Primary recommendation (best compatibility):**
+- Clash Verge Rev — https://github.com/clash-verge-rev/clash-verge-rev/releases
+  - Clash-based rule routing is compatible with OpenCode and other development tools
+
+**Also supported** (detected by installer, but may not work with all development tools):
 - v2rayN
 - Shadowsocks
 

@@ -121,6 +121,9 @@ config.keys = {
   -- Pass through CTRL+B when pressed twice (tmux: bind C-b send-prefix)
   { key = 'b', mods = 'LEADER|CTRL', action = act.SendKey { key = 'b', mods = 'CTRL' } },
 
+  -- Paste from clipboard (explicit binding for mux domain compatibility)
+  { key = 'v', mods = 'CTRL', action = act.PasteFrom 'Clipboard' },
+
   -- Split panes: | horizontal, - vertical (tmux: bind | split-window -h, bind - split-window -v)
   { key = '|', mods = 'LEADER|SHIFT', action = act.SplitHorizontal { domain = 'CurrentPaneDomain' } },
   { key = '-', mods = 'LEADER',       action = act.SplitVertical { domain = 'CurrentPaneDomain' } },
