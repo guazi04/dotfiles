@@ -146,6 +146,16 @@ config.keys = {
   -- Detach from mux — sessions persist in background (like tmux detach)
   { key = 'd', mods = 'LEADER', action = act.DetachDomain 'CurrentPaneDomain' },
 
+  -- Rename tab (tmux: bind , command-prompt -I "#W" "rename-window '%%'")
+  { key = ',', mods = 'LEADER', action = act.PromptInputLine {
+    description = 'Enter new tab name',
+    action = wezterm.action_callback(function(window, pane, line)
+      if line then
+        window:active_tab():set_title(line)
+      end
+    end),
+  } },
+
   -- Close current pane with confirmation
   { key = 'x', mods = 'LEADER', action = act.CloseCurrentPane { confirm = true } },
 
