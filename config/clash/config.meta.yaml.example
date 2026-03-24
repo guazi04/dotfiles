@@ -1,0 +1,42 @@
+#---------------------------------------------------#
+## This file is for Clash Meta (mihomo) kernel clients.
+## Import in Clash Verge Rev / Clash Verge:
+## Profiles -> Local File
+##
+## Clash Meta / mihomo docs:
+## https://wiki.metacubex.one/
+#---------------------------------------------------#
+
+mixed-port: 7890
+allow-lan: false
+mode: rule
+log-level: info
+unified-delay: true
+
+proxies:
+  - name: "SS-hb-aliyun"
+    type: ss
+    server: YOUR_SERVER_ADDRESS
+    port: 38883
+    cipher: chacha20-ietf-poly1305
+    password: "YOUR_PASSWORD"
+    udp: true
+
+proxy-groups:
+  - name: Proxy
+    type: select
+    proxies:
+      - SS-hb-aliyun
+      - DIRECT
+
+rules:
+  # Google 走代理
+  - DOMAIN-SUFFIX,google.com,Proxy
+  - DOMAIN-SUFFIX,googleapis.com,Proxy
+  - DOMAIN-SUFFIX,gstatic.com,Proxy
+
+  # 其他
+  - DOMAIN-SUFFIX,ad.com,REJECT
+  - GEOIP,CN,DIRECT
+  - DOMAIN-SUFFIX,intsig.net,DIRECT
+  - MATCH,Proxy

@@ -29,6 +29,8 @@ info "Starting installation..."
 CLASH_DIR="$HOME/.config/clash"
 CLASH_DEST="$CLASH_DIR/config.yaml"
 CLASH_EXAMPLE="$DOTFILES_DIR/config/clash/config.yaml.example"
+CLASH_META_DEST="$HOME/Downloads/clash-meta-config.yaml"
+CLASH_META_EXAMPLE="$DOTFILES_DIR/config/clash/config.meta.yaml.example"
 
 # Step 0a: Test if proxy is already working
 test_proxy() {
@@ -54,6 +56,14 @@ detect_proxy_tool() {
   [[ -d "/Applications/V2RayU.app" ]]            && echo "V2RayU"           && return 0
   [[ -d "/Applications/ShadowsocksX-NG.app" ]]   && echo "ShadowsocksX-NG" && return 0
   return 1
+}
+
+is_clash_original_tool() {
+  [[ "${PROXY_TOOL:-}" == "ClashX" || "${PROXY_TOOL:-}" == "ClashX Pro" ]]
+}
+
+is_clash_meta_tool() {
+  [[ "${PROXY_TOOL:-}" == "Clash Verge Rev" || "${PROXY_TOOL:-}" == "Clash Verge" ]]
 }
 
 # Step 0d: Interactive config creation from SS server details
@@ -92,8 +102,67 @@ create_clash_config() {
   ss_name="${ss_name:-SS-proxy}"
 
   # Generate config from template structure
-  mkdir -p "$CLASH_DIR"
-  cat > "$CLASH_DEST" <<CLASH_EOF
+  local clash_target=""
+  if is_clash_meta_tool; then
+    clash_target="$CLASH_META_DEST"
+    mkdir -p "$(dirname "$clash_target")"
+    cat > "$clash_target" <<CLASH_EOF
+#---------------------------------------------------#
+## This file is for Clash Meta (mihomo) kernel clients.
+## Import in Clash Verge Rev / Clash Verge:
+## Profiles -> Local File
+##
+## Clash Meta / mihomo docs:
+## https://wiki.metacubex.one/
+#---------------------------------------------------#
+
+mixed-port: 7890
+allow-lan: false
+mode: rule
+log-level: info
+unified-delay: true
+
+proxies:
+  - name: "${ss_name}"
+    type: ss
+    server: '${ss_server}'
+    port: ${ss_port}
+    cipher: '${ss_cipher}'
+    password: '${ss_password}'
+    udp: true
+
+proxy-groups:
+  - name: Proxy
+    type: select
+    proxies:
+      - '${ss_name}'
+      - DIRECT
+
+rules:
+  # Google 走代理
+  - DOMAIN-SUFFIX,google.com,Proxy
+  - DOMAIN-SUFFIX,googleapis.com,Proxy
+  - DOMAIN-SUFFIX,gstatic.com,Proxy
+
+  # 其他
+  - DOMAIN-SUFFIX,ad.com,REJECT
+  - GEOIP,CN,DIRECT
+  - DOMAIN-SUFFIX,intsig.net,DIRECT
+  - MATCH,Proxy
+CLASH_EOF
+
+    chmod 600 "$clash_target"
+    ok "Clash Meta config written → $clash_target (chmod 600)"
+    echo ""
+    echo -e "  ${YELLOW}Import this file in $PROXY_TOOL:${NC}"
+    echo "    1) Open $PROXY_TOOL"
+    echo "    2) Profiles -> Local File"
+    echo "    3) Select $clash_target"
+    echo "    4) Enable System Proxy"
+  else
+    clash_target="$CLASH_DEST"
+    mkdir -p "$CLASH_DIR"
+    cat > "$clash_target" <<CLASH_EOF
 #---------------------------------------------------#
 ## 配置文件需要放置在 \$HOME/.config/clash/*.yaml
 
@@ -135,8 +204,9 @@ rules:
   - MATCH,Proxy
 CLASH_EOF
 
-  chmod 600 "$CLASH_DEST"
-  ok "Config written → $CLASH_DEST (chmod 600)"
+    chmod 600 "$clash_target"
+    ok "Config written → $clash_target (chmod 600)"
+  fi
 }
 
 # ── Main proxy setup flow ──
@@ -164,7 +234,7 @@ else
     echo "    Why: rule-based routing works with OpenCode and other development tools"
     echo "         (plain Shadowsocks-style global tunneling can break API routing)"
     echo ""
-    echo "  Supported tools: Clash Verge Rev, ClashX, Clash Verge, V2RayU, ShadowsocksX-NG"
+    echo "  Supported tools: Clash Verge Rev, ClashX, ClashX Pro, Clash Verge, V2RayU, ShadowsocksX-NG"
     echo ""
     if command -v brew &>/dev/null; then
       read -rp "  Auto-install Clash Verge Rev now via Homebrew? [Y/n] " install_clash_verge_rev < /dev/tty
@@ -186,7 +256,7 @@ else
     echo "  Next in Clash Verge Rev:"
     echo "    1) Open the app"
     echo "    2) Import or create a config"
-    echo "       (you can use $CLASH_DEST after generating it below)"
+    echo "       (Step 0c will generate a client-specific config file)"
     echo "    3) Enable System Proxy"
     echo ""
     read -rp "  Press Enter after installing a proxy tool (or Enter to skip)..." _ < /dev/tty
@@ -200,28 +270,49 @@ else
   fi
 
   # Step 0c: Check / create Clash config (for Clash-based tools)
-  if [[ -n "$PROXY_TOOL" ]] && [[ "$PROXY_TOOL" == Clash* ]]; then
-    if [[ -f "$CLASH_DEST" ]]; then
-      ok "Clash config already exists at $CLASH_DEST"
-      if ! test_proxy; then
+  if [[ -n "$PROXY_TOOL" ]]; then
+    if is_clash_original_tool; then
+      if [[ -f "$CLASH_DEST" ]]; then
+        ok "Clash config already exists at $CLASH_DEST"
+        if ! test_proxy; then
+          echo ""
+          echo -e "  ${YELLOW}Open $PROXY_TOOL and enable System Proxy, then press Enter${NC}"
+          read -rp "  Press Enter when ready..." _ < /dev/tty
+          if test_proxy; then
+            ok "Proxy is working (127.0.0.1:$DETECTED_PROXY_PORT)"
+          else
+            warn "Proxy not reachable, continuing without proxy (downloads may be slow)"
+          fi
+        fi
+      else
         echo ""
-        echo -e "  ${YELLOW}Open $PROXY_TOOL and enable System Proxy, then press Enter${NC}"
-        read -rp "  Press Enter when ready..." _ < /dev/tty
-        if test_proxy; then
-          ok "Proxy is working (127.0.0.1:$DETECTED_PROXY_PORT)"
+        echo -e "  ${YELLOW}No Clash config found at $CLASH_DEST${NC}"
+        echo ""
+        read -rp "  Create config from Shadowsocks server info? [Y/n] " create_config < /dev/tty
+        if [[ ! "$create_config" =~ ^[Nn]$ ]]; then
+          create_clash_config
+          echo ""
+          echo -e "  ${YELLOW}Now open $PROXY_TOOL and enable System Proxy, then press Enter${NC}"
+          read -rp "  Press Enter when ready..." _ < /dev/tty
+          if test_proxy; then
+            ok "Proxy is working (127.0.0.1:$DETECTED_PROXY_PORT)"
+          else
+            warn "Proxy not reachable, continuing without proxy (downloads may be slow)"
+          fi
         else
-          warn "Proxy not reachable, continuing without proxy (downloads may be slow)"
+          warn "Skipped proxy config — downloads may be slow"
+          echo "  You can create the config later: cp $CLASH_EXAMPLE $CLASH_DEST"
         fi
       fi
-    else
+    elif is_clash_meta_tool; then
       echo ""
-      echo -e "  ${YELLOW}No Clash config found at $CLASH_DEST${NC}"
+      echo -e "  ${YELLOW}$PROXY_TOOL uses Clash Meta (mihomo) profiles managed by the app.${NC}"
       echo ""
-      read -rp "  Create config from Shadowsocks server info? [Y/n] " create_config < /dev/tty
-      if [[ ! "$create_config" =~ ^[Nn]$ ]]; then
+      read -rp "  Generate a Clash Meta config file to import? [Y/n] " create_meta_config < /dev/tty
+      if [[ ! "$create_meta_config" =~ ^[Nn]$ ]]; then
         create_clash_config
         echo ""
-        echo -e "  ${YELLOW}Now open $PROXY_TOOL and enable System Proxy, then press Enter${NC}"
+        echo -e "  ${YELLOW}After import, enable System Proxy in $PROXY_TOOL, then press Enter${NC}"
         read -rp "  Press Enter when ready..." _ < /dev/tty
         if test_proxy; then
           ok "Proxy is working (127.0.0.1:$DETECTED_PROXY_PORT)"
@@ -229,8 +320,8 @@ else
           warn "Proxy not reachable, continuing without proxy (downloads may be slow)"
         fi
       else
-        warn "Skipped proxy config — downloads may be slow"
-        echo "  You can create the config later: cp $CLASH_EXAMPLE $CLASH_DEST"
+        warn "Skipped Clash Meta config generation — downloads may be slow"
+        echo "  You can generate/import later using this template: $CLASH_META_EXAMPLE"
       fi
     fi
   fi

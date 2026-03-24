@@ -28,6 +28,7 @@ Other clients are still detected, but may not work with all development tools.
 | `config/tmux.conf` | Tmux config with Catppuccin Mocha theme, vim-style navigation |
 | `config/p10k.zsh` | Powerlevel10k prompt theme config |
 | `config/clash/config.yaml.example` | ClashX config template (fill in your server info) |
+| `config/clash/config.meta.yaml.example` | Clash Meta (mihomo) template for Clash Verge Rev / Clash Verge |
 | `install.sh` | Automated installer (idempotent, safe to re-run) |
 | `uninstall.sh` | Remove symlinks and restore backups |
 
@@ -55,8 +56,10 @@ The installer runs an interactive proxy setup as the very first step:
 1. **Auto-detect**: Scans local ports `7890`, `1081`, `10808`, `1080` — the first responding port is used
 2. **Tool detection**: Checks for installed proxy tools (Clash Verge Rev, ClashX/ClashX Pro, Clash Verge, V2RayU, ShadowsocksX-NG)
 3. **Guided startup**: If a tool is found but not running, prompts you to start it
-4. **Config check**: For Clash-based tools, looks for existing config at `~/.config/clash/config.yaml`
-5. **Guided creation**: If no config exists, walks you through entering Shadowsocks server details (address, port, password, cipher) and generates the config
+4. **Client-aware config handling**:
+   - **ClashX / ClashX Pro**: checks `~/.config/clash/config.yaml` and can generate/update it directly
+   - **Clash Verge Rev / Clash Verge**: does **not** write to app-managed internal directories; offers to generate a Clash Meta config file for manual import
+5. **Guided creation**: Prompts for Shadowsocks server details (address, port, password, cipher, name) and generates the matching config format for the detected client
 6. **Verification**: Re-tests connectivity at key checkpoints after prompts
 
 If no proxy tool is detected, the installer recommends Clash Verge Rev first.
@@ -73,7 +76,12 @@ If no proxy tool is detected, the installer recommends Clash Verge Rev first.
 - V2RayU
 - ShadowsocksX-NG
 
-The generated config is written to `~/.config/clash/config.yaml` with `chmod 600`. It is **never** stored in the repo.
+Generated config output depends on the client:
+
+- **ClashX / ClashX Pro**: `~/.config/clash/config.yaml` (`chmod 600`)
+- **Clash Verge Rev / Clash Verge**: `~/Downloads/clash-meta-config.yaml` (`chmod 600`), then import in app via **Profiles → Local File**
+
+Generated runtime config files are **never** stored in the repo.
 
 Manual proxy control in the shell:
 
