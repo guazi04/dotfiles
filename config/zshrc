@@ -193,3 +193,19 @@ topcmd() { history | awk '{print $2}' | sort | uniq -c | sort -rn | head -10; }
 
 [[ -f "$HOME/.local/bin/env" ]] && . "$HOME/.local/bin/env"
 
+
+# Git: checkout target branch, pull latest, delete current branch
+unalias gc 2>/dev/null
+gc() {
+  local branch=$(git branch --show-current)
+  if [ -z "$branch" ]; then
+    echo "Not on any branch (detached HEAD)"
+    return 1
+  fi
+  local target=${1:-dev}
+  if [ "$branch" = "$target" ]; then
+    git pull 2>/dev/null || git pull $(git remote | head -1) "$target"
+    return
+  fi
+  git checkout "$target" && { git pull 2>/dev/null || git pull $(git remote | head -1) "$target"; } && git branch -D "$branch"
+}
